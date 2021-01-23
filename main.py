@@ -50,7 +50,7 @@ class App(object):
         self.message_frame.pack(fill=X)
 
         self.do_not_disturb_frame = Frame(
-            self.no_disturb_time_tab, width=500, height=370, bg='#165')
+            self.no_disturb_time_tab, width=500, height=370, bg='#181818')
         self.do_not_disturb_frame.pack(fill=X)
 
         # Time Frame Components #
@@ -141,11 +141,113 @@ class App(object):
         self.restart_alarm_btn.pack(padx=(0, 67), pady=(20, 0), side='right')
 
         #
+        # Do Not Disturb Frame #
+        # "From" Heading
+        self.from_lbl = Label(self.do_not_disturb_frame,
+                              text='From:', font=('Modern', 22, 'bold'), bg='#181818', fg='white')
+        self.from_lbl.place(x=60, y=30)
+
+        # "From" Entries
+        self.from_hr = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
+                             fg='white', bg='#414141', width=4, justify='center', validate='key',
+                             validatecommand=(self.validateHr, '%P'), relief=RIDGE, bd=4)
+        self.from_hr.place(x=80, y=85)
+        self.from_hr.insert(INSERT, '0')
+
+        self.from_min = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
+                              fg='white', bg='#414141', width=4, justify='center', validate='key',
+                              validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
+        self.from_min.place(x=250, y=85)
+        self.from_min.insert(INSERT, '0')
+
+        self.from_sec = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
+                              fg='white', bg='#414141', width=4, justify='center', validate='key',
+                              validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
+        self.from_sec.place(x=420, y=85)
+        self.from_sec.insert(INSERT, '0')
+
+        # "From" Entry Labels
+        self.from_hr_lbl = Label(
+            self.do_not_disturb_frame, text='Hours', fg='white', font='Modern 20 bold', bg='#181818')
+        self.from_hr_lbl.place(x=82, y=135)
+
+        self.from_min_lbl = Label(
+            self.do_not_disturb_frame, text='Minutes', fg='white', font='Modern 20 bold', bg='#181818')
+        self.from_min_lbl.place(x=242, y=135)
+
+        self.from_sec_lbl = Label(
+            self.do_not_disturb_frame, text='Seconds', fg='white', font='Modern 20 bold', bg='#181818')
+        self.from_sec_lbl.place(x=410, y=135)
+
+        # "From" Colons
+        self.from_colon_lbl1 = Label(
+            self.do_not_disturb_frame, image=self.colon, bg='#181818')
+        self.from_colon_lbl1.place(x=180, y=88)
+
+        self.from_colon_lbl2 = Label(
+            self.do_not_disturb_frame, image=self.colon, bg='#181818')
+        self.from_colon_lbl2.place(x=350, y=88)
+
+        # "To" Heading
+        self.to_lbl = Label(self.do_not_disturb_frame,
+                            text='To:', font=('Modern', 22, 'bold'), bg='#181818', fg='white')
+        self.to_lbl.place(x=60, y=190)
+
+        # "To" Entries
+        self.to_hr = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
+                           fg='white', bg='#414141', width=4, justify='center', validate='key',
+                           validatecommand=(self.validateHr, '%P'), relief=RIDGE, bd=4)
+        self.to_hr.place(x=80, y=245)
+        self.to_hr.insert(INSERT, '0')
+
+        self.to_min = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
+                            fg='white', bg='#414141', width=4, justify='center', validate='key',
+                            validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
+        self.to_min.place(x=250, y=245)
+        self.to_min.insert(INSERT, '0')
+
+        self.to_sec = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
+                            fg='white', bg='#414141', width=4, justify='center', validate='key',
+                            validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
+        self.to_sec.place(x=420, y=245)
+        self.to_sec.insert(INSERT, '0')
+
+        # "To" Entry Labels
+        self.to_hr_lbl = Label(
+            self.do_not_disturb_frame, text='Hours', fg='white', font='Modern 20 bold', bg='#181818')
+        self.to_hr_lbl.place(x=82, y=295)
+
+        self.to_min_lbl = Label(
+            self.do_not_disturb_frame, text='Minutes', fg='white', font='Modern 20 bold', bg='#181818')
+        self.to_min_lbl.place(x=242, y=295)
+
+        self.to_sec_lbl = Label(
+            self.do_not_disturb_frame, text='Seconds', fg='white', font='Modern 20 bold', bg='#181818')
+        self.to_sec_lbl.place(x=410, y=295)
+
+        # "To" Colons
+        self.to_colon_lbl1 = Label(
+            self.do_not_disturb_frame, image=self.colon, bg='#181818')
+        self.to_colon_lbl1.place(x=180, y=248)
+
+        self.to_colon_lbl2 = Label(
+            self.do_not_disturb_frame, image=self.colon, bg='#181818')
+        self.to_colon_lbl2.place(x=350, y=248)
+
+        self.save_no_disturb = Button(self.no_disturb_time_tab, text='Save', font=('Modern', 15, 'bold'),
+                                      bg='#414141', relief=FLAT, fg='white', width=13,
+                                      command=self.no_disturb_schedule_save)
+        self.save_no_disturb.pack()
+
+        #
         # Starting Alarm Timer #
         self.schedule_alarm()
 
     #
     # Methods #
+    def no_disturb_schedule_save(self):
+        pass
+
     def on_closing(self):
         answer = messagebox.askyesno(
             'Close', 'If You Close This Window, the Alarm will not Repeat.\nDo You Really Want to Quit?', icon='info')
