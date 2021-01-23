@@ -1,4 +1,5 @@
 from tkinter import messagebox
+from tkinter import ttk
 from tkinter import *
 
 from datetime import datetime, timedelta
@@ -17,21 +18,40 @@ class App(object):
 
     def __init__(self, master):
         self.root = master
+        self.root.protocol('WM_DELETE_WINDOW', self.on_closing)
+
+        # Style #
+        style = styling()
+        style.theme_use('dark')
 
         self.reset_handled = True
-
         # Validation #
         self.validateHr = self.root.register(self.validate_hr)
         self.validateMS = self.root.register(self.validate_min_sec)
 
+        # Tabs #
+        self.tabs = ttk.Notebook(self.root)
+        self.tabs.pack(fill='both', expand=True)
+
+        self.schedule_time_tab = ttk.Frame(self.tabs)
+        self.no_disturb_time_tab = ttk.Frame(self.tabs)
+
+        self.tabs.add(self.schedule_time_tab, text='Schedule Timer')
+        self.tabs.add(self.no_disturb_time_tab,
+                      text='Do Not Disturb')
+
         # Frames #
         self.time_frame = Frame(
-            self.root, width=500, height=200, bg='#181818')
+            self.schedule_time_tab, width=500, height=200, bg='#181818')
         self.time_frame.pack(fill=X)
 
         self.message_frame = Frame(
-            self.root, width=500, height=150, bg='#181818')
+            self.schedule_time_tab, width=500, height=150, bg='#181818')
         self.message_frame.pack(fill=X)
+
+        self.do_not_disturb_frame = Frame(
+            self.no_disturb_time_tab, width=500, height=370, bg='#165')
+        self.do_not_disturb_frame.pack(fill=X)
 
         # Time Frame Components #
         # Sub Heading
@@ -89,6 +109,7 @@ class App(object):
             self.time_frame, text='Reset Schedules', font=('Modern', 12, 'bold'), bg='#414141', width=15, relief=FLAT, fg='white', command=self.reset)
         self.reset_btn.place(x=430, y=20)
 
+        #
         # Message Frame Components #
         # Sub Heading
         self.message_lbl = Label(
@@ -101,20 +122,36 @@ class App(object):
             fg='white', font=('Modern', 18, 'bold'), wrap=WORD, insertbackground='white')
         self.message_area.place(x=60, y=50)
 
-        # Save Button #
+        # Do Not Disturb
+        self.do_not_disturb = BooleanVar()
+        self.do_not_disturb_ckbox = Checkbutton(self.message_frame, text='Do Not Disturb', activeforeground='white',
+                                                activebackground='#181818', selectcolor='#181818', bg='#181818', fg='white', font=(
+                                                    'Modern', 14, 'bold'), variable=self.do_not_disturb)
+        self.do_not_disturb.set(False)
+        self.do_not_disturb_ckbox.place(x=368, y=12)
+
+        #
+        # Buttons #
         self.save_btn = Button(
-            self.root, text='Save', font=('Modern', 15, 'bold'), bg='#414141', relief=FLAT, fg='white', width=13, command=self.Save)
+            self.schedule_time_tab, text='Save', font=('Modern', 15, 'bold'), bg='#414141', relief=FLAT, fg='white', width=13, command=self.Save)
         self.save_btn.pack(padx=(61, 0), pady=(20, 0), side='left')
 
         self.restart_alarm_btn = Button(
-            self.root, text='Restart Alarm', font=('Modern', 15, 'bold'), bg='#414141', relief=FLAT, fg='white', width=13, command=self.restart)
+            self.schedule_time_tab, text='Restart Alarm', font=('Modern', 15, 'bold'), bg='#414141', relief=FLAT, fg='white', width=13, command=self.restart)
         self.restart_alarm_btn.pack(padx=(0, 67), pady=(20, 0), side='right')
 
+        #
         # Starting Alarm Timer #
         self.schedule_alarm()
 
     #
     # Methods #
+    def on_closing(self):
+        answer = messagebox.askyesno(
+            'Close', 'If You Close This Window, the Alarm will not Repeat.\nDo You Really Want to Quit?', icon='info')
+        if answer:
+            self.root.destroy()
+
     def restart(self):
         global _DISABLED_ALARM
         if _DISABLED_ALARM:
@@ -149,22 +186,29 @@ class App(object):
             cur.execute(query)
             con.commit()
 
-            # Success message
             messagebox.showinfo('Success', 'Schedule Set')
         except:
             messagebox.showerror(
                 'Warning', 'Could not Save to Database', icon='warning')
 
     def reset(self):
-        query = 'DELETE FROM alarm_info'
-        try:
-            cur.execute(query)
-            con.commit()
-            self.reset_handled = False
-            messagebox.showinfo('Reset', 'All Schedules Cleared')
-        except:
-            messagebox.showerror(
-                'Reset', 'Failed to Clear Schedules. Contact Developer', icon='warning')
+        """
+        Deletes all the scheduled times from the database
+
+        """
+        answer = messagebox.askyesno(
+            'Reset', 'Are You Sure You Want to Delete All Your Schedules?', icon='info')
+        if answer:
+            query = 'DELETE FROM alarm_info'
+            try:
+                cur.execute(query)
+                con.commit()
+                # Setting the parameter to make sure the alarm is also resetted
+                self.reset_handled = False
+                messagebox.showinfo('Reset', 'All Schedules Cleared')
+            except:
+                messagebox.showerror(
+                    'Reset', 'Failed to Clear Schedules. Contact Developer', icon='warning')
 
     def validate_hr(self, input):
         """Validate if the correct type of input is given to the hours entry
@@ -222,13 +266,13 @@ class App(object):
         # Checking for schedules in database
         result = cur.execute('SELECT time, message from alarm_info').fetchone()
         if result is not None:
-            global _ALARM_GUI_RUNNING
+            global _ALARM_GUI_RUNNING, _DISABLED_ALARM
             # Splitting the time into hours, minutes and seconds
             time = result[0].split(':')
             scheduled_time = datetime.now(
             ) + timedelta(hours=int(time[0]), minutes=int(time[1]), seconds=int(time[2]))  # The time when the alarm should ring
 
-            if not _ALARM_GUI_RUNNING and not _DISABLED_ALARM:
+            if not _ALARM_GUI_RUNNING and not _DISABLED_ALARM and not self.do_not_disturb.get():
                 self.validate_alarm(scheduled_time, result[1])
                 return
 
@@ -236,17 +280,17 @@ class App(object):
         self.root.after(5000, self.schedule_alarm)
 
     def validate_alarm(self, scheduled_time, message):
-        """Checks if it is time to ring the alarm. Checks every 1 second.
+        """Checks if it is time to ring the alarm. Checks every 1 second. Also handles the reset event.
 
         Args:
-            scheduled_time (list): The list that contains the hours, minutes and seconds of the schedule
+            scheduled_time (datetime.datetime): The list that contains the hours, minutes and seconds of the schedule
             message (str): The message to be shown when alarm rings
         """
-        if datetime.now() >= scheduled_time and self.reset_handled:
+        if datetime.now() >= scheduled_time and self.reset_handled and not self.do_not_disturb.get():
             self.sound_alarm(message)
             self.schedule_alarm()
             return
-        elif not self.reset_handled:
+        elif not self.reset_handled or self.do_not_disturb.get():
             self.reset_handled = True
             self.schedule_alarm()
             return
@@ -295,10 +339,15 @@ class Alarm(Toplevel):
                           bg='#414141', relief=FLAT, fg='white', width=10, command=self.quit)
         quit_btn.pack(padx=20, pady=(20, 0), side='right')
 
+        # Plays the alarm sound
         ws.PlaySound('tones/soft_sound.wav', ws.SND_LOOP+ws.SND_ASYNC)
         self.lift()
 
     def quit(self):
+        """
+        Stops the alarm from repeating until the alarm is restarted
+
+        """
         global _ALARM_GUI_RUNNING, _DISABLED_ALARM
         _ALARM_GUI_RUNNING = False
         _DISABLED_ALARM = True
@@ -306,6 +355,10 @@ class Alarm(Toplevel):
         self.destroy()
 
     def kill(self):
+        """
+        Stops the alarm from ringing.
+
+        """
         global _ALARM_GUI_RUNNING
         _ALARM_GUI_RUNNING = False
 
@@ -313,22 +366,51 @@ class Alarm(Toplevel):
         self.destroy()
 
 
+def styling():
+    style = ttk.Style()
+    style.theme_create('dark', settings={
+        ".": {
+            "configure": {
+                "background": '#181818',  # All except tabs
+                "font": ('Modern', 12, 'bold')
+            }
+        },
+        "TNotebook": {
+            "configure": {
+                "background": '#181818',  # Your margin color
+                # margins: left, top, right, separator
+                "tabmargins": [2, 5, 0, 0],
+            }
+        },
+        "TNotebook.Tab": {
+            "configure": {
+                "background": '#414141',  # tab color when not selected
+                # [space between text and horizontal tab-button border, space between text and vertical tab_button border]
+                "padding": [10, 2],
+                "font": ('Modern', 13, 'bold'),
+                "foreground": 'white'
+            },
+            "map": {
+                # Tab color when selected
+                "background": [("selected", '#181818')],
+                "expand": [("selected", [1, 1, 1, 0])]  # text margins
+            }
+        }
+    })
+    return style
+
+
 def main():
-    # erase_db()
     root = Tk()
     root.config(bg='#181818')
     root.title('Scheduler')
-    root.geometry('572x442+1200+250')
+    root.geometry('572x480+1200+250')
     root.resizable(False, False)
+    root.iconbitmap('Images/icon.ico')
 
     app = App(root)
 
     root.mainloop()
-
-
-def erase_db():
-    cur.execute('delete from alarm_info')
-    con.commit()
 
 
 if __name__ == '__main__':
