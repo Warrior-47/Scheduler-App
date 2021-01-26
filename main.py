@@ -66,6 +66,7 @@ class App(object):
             validatecommand=(self.validateHr, '%P'), relief=RIDGE, bd=4)
         self.ent_hour.place(x=80, y=85)
         self.ent_hour.insert(INSERT, '0')
+        self.ent_hour.bind('<FocusOut>', self.entry_focus_out_handler)
 
         self.ent_min = Entry(
             self.time_frame, font=('Modern', 20, 'bold'), insertbackground='white',
@@ -73,6 +74,7 @@ class App(object):
             validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
         self.ent_min.place(x=250, y=85)
         self.ent_min.insert(INSERT, '0')
+        self.ent_min.bind('<FocusOut>', self.entry_focus_out_handler)
 
         self.ent_sec = Entry(
             self.time_frame, font=('Modern', 20, 'bold'), insertbackground='white',
@@ -80,6 +82,7 @@ class App(object):
             validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
         self.ent_sec.place(x=420, y=85)
         self.ent_sec.insert(INSERT, '0')
+        self.ent_sec.bind('<FocusOut>', self.entry_focus_out_handler)
 
         # Entry Labels
         self.hour_lbl = Label(
@@ -124,11 +127,10 @@ class App(object):
 
         # Do Not Disturb
         self.do_not_disturb = BooleanVar()
-        self.do_not_disturb_ckbox = Checkbutton(self.message_frame, text='Do Not Disturb', activeforeground='white',
-                                                activebackground='#181818', selectcolor='#181818', bg='#181818', fg='white', font=(
-                                                    'Modern', 14, 'bold'), variable=self.do_not_disturb)
+        self.do_not_disturb_ckbox = ttk.Checkbutton(
+            self.message_frame, text='Do Not Disturb', cursor='hand2', variable=self.do_not_disturb)
         self.do_not_disturb.set(False)
-        self.do_not_disturb_ckbox.place(x=368, y=12)
+        self.do_not_disturb_ckbox.place(x=377, y=19)
 
         #
         # Buttons #
@@ -151,42 +153,53 @@ class App(object):
         self.from_hr = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                              fg='white', bg='#414141', width=4, justify='center', validate='key',
                              validatecommand=(self.validateHr, '%P'), relief=RIDGE, bd=4)
-        self.from_hr.place(x=80, y=85)
+        self.from_hr.place(x=75, y=85)
         self.from_hr.insert(INSERT, '0')
 
         self.from_min = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                               fg='white', bg='#414141', width=4, justify='center', validate='key',
                               validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
-        self.from_min.place(x=250, y=85)
+        self.from_min.place(x=245, y=85)
         self.from_min.insert(INSERT, '0')
 
         self.from_sec = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                               fg='white', bg='#414141', width=4, justify='center', validate='key',
                               validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
-        self.from_sec.place(x=420, y=85)
+        self.from_sec.place(x=415, y=85)
         self.from_sec.insert(INSERT, '0')
 
         # "From" Entry Labels
         self.from_hr_lbl = Label(
             self.do_not_disturb_frame, text='Hours', fg='white', font='Modern 20 bold', bg='#181818')
-        self.from_hr_lbl.place(x=82, y=135)
+        self.from_hr_lbl.place(x=77, y=135)
 
         self.from_min_lbl = Label(
             self.do_not_disturb_frame, text='Minutes', fg='white', font='Modern 20 bold', bg='#181818')
-        self.from_min_lbl.place(x=242, y=135)
+        self.from_min_lbl.place(x=237, y=135)
 
         self.from_sec_lbl = Label(
             self.do_not_disturb_frame, text='Seconds', fg='white', font='Modern 20 bold', bg='#181818')
-        self.from_sec_lbl.place(x=410, y=135)
+        self.from_sec_lbl.place(x=405, y=135)
 
         # "From" Colons
         self.from_colon_lbl1 = Label(
             self.do_not_disturb_frame, image=self.colon, bg='#181818')
-        self.from_colon_lbl1.place(x=180, y=88)
+        self.from_colon_lbl1.place(x=175, y=88)
 
         self.from_colon_lbl2 = Label(
             self.do_not_disturb_frame, image=self.colon, bg='#181818')
-        self.from_colon_lbl2.place(x=350, y=88)
+        self.from_colon_lbl2.place(x=345, y=88)
+
+        # "From" 'AM' 'PM' Radiobuttons
+        self.from_am_pm = StringVar()
+
+        self.from_am_radio = ttk.Radiobutton(
+            self.do_not_disturb_frame, text='AM', value='AM', cursor='hand2', var=self.from_am_pm)
+        self.from_am_radio.place(x=500, y=80)
+
+        self.from_pm_radio = ttk.Radiobutton(
+            self.do_not_disturb_frame, text='PM', value='PM', cursor='hand2', var=self.from_am_pm)
+        self.from_pm_radio.place(x=500, y=105)
 
         # "To" Heading
         self.to_lbl = Label(self.do_not_disturb_frame,
@@ -197,47 +210,60 @@ class App(object):
         self.to_hr = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                            fg='white', bg='#414141', width=4, justify='center', validate='key',
                            validatecommand=(self.validateHr, '%P'), relief=RIDGE, bd=4)
-        self.to_hr.place(x=80, y=245)
+        self.to_hr.place(x=75, y=245)
         self.to_hr.insert(INSERT, '0')
 
         self.to_min = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                             fg='white', bg='#414141', width=4, justify='center', validate='key',
                             validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
-        self.to_min.place(x=250, y=245)
+        self.to_min.place(x=245, y=245)
         self.to_min.insert(INSERT, '0')
 
         self.to_sec = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                             fg='white', bg='#414141', width=4, justify='center', validate='key',
                             validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
-        self.to_sec.place(x=420, y=245)
+        self.to_sec.place(x=415, y=245)
         self.to_sec.insert(INSERT, '0')
 
         # "To" Entry Labels
         self.to_hr_lbl = Label(
             self.do_not_disturb_frame, text='Hours', fg='white', font='Modern 20 bold', bg='#181818')
-        self.to_hr_lbl.place(x=82, y=295)
+        self.to_hr_lbl.place(x=77, y=295)
 
         self.to_min_lbl = Label(
             self.do_not_disturb_frame, text='Minutes', fg='white', font='Modern 20 bold', bg='#181818')
-        self.to_min_lbl.place(x=242, y=295)
+        self.to_min_lbl.place(x=237, y=295)
 
         self.to_sec_lbl = Label(
             self.do_not_disturb_frame, text='Seconds', fg='white', font='Modern 20 bold', bg='#181818')
-        self.to_sec_lbl.place(x=410, y=295)
+        self.to_sec_lbl.place(x=405, y=295)
 
         # "To" Colons
         self.to_colon_lbl1 = Label(
             self.do_not_disturb_frame, image=self.colon, bg='#181818')
-        self.to_colon_lbl1.place(x=180, y=248)
+        self.to_colon_lbl1.place(x=175, y=248)
 
         self.to_colon_lbl2 = Label(
             self.do_not_disturb_frame, image=self.colon, bg='#181818')
-        self.to_colon_lbl2.place(x=350, y=248)
+        self.to_colon_lbl2.place(x=345, y=248)
 
-        self.save_no_disturb = Button(self.no_disturb_time_tab, text='Save', font=('Modern', 15, 'bold'),
-                                      bg='#414141', relief=FLAT, fg='white', width=13,
-                                      command=self.no_disturb_schedule_save)
-        self.save_no_disturb.pack()
+        # "To" 'AM' 'PM' Radiobuttons
+        self.to_am_pm = StringVar()
+
+        self.to_am_radio = ttk.Radiobutton(
+            self.do_not_disturb_frame, text='AM', value='AM', cursor='hand2', var=self.to_am_pm)
+        self.to_am_radio.place(x=500, y=240)
+
+        self.to_pm_radio = ttk.Radiobutton(
+            self.do_not_disturb_frame, text='PM', value='PM', cursor='hand2', var=self.to_am_pm)
+        self.to_pm_radio.place(x=500, y=265)
+
+        #
+        # Do not Disturb save button #
+        self.save_no_disturb_btn = Button(self.no_disturb_time_tab, text='Save', font=('Modern', 15, 'bold'),
+                                          bg='#414141', relief=FLAT, fg='white', width=13,
+                                          command=self.no_disturb_schedule_save)
+        self.save_no_disturb_btn.pack()
 
         #
         # Starting Alarm Timer #
@@ -248,13 +274,30 @@ class App(object):
     def no_disturb_schedule_save(self):
         pass
 
+    def entry_focus_out_handler(self, event):
+        """Enters a "0" in entries if the entry is empty when it is focused out
+
+        Args:
+            event (Tkinter.Event): contains the focus out event information
+        """
+        if event.widget.get() == '':
+            event.widget.insert(INSERT, 0)
+
     def on_closing(self):
+        """
+        Confirms if the user actually wants to stop the Application.
+
+        """
         answer = messagebox.askyesno(
             'Close', 'If You Close This Window, the Alarm will not Repeat.\nDo You Really Want to Quit?', icon='info')
         if answer:
             self.root.destroy()
 
     def restart(self):
+        """
+        Restarts the alarm if it is diasbled.
+
+        """
         global _DISABLED_ALARM
         if _DISABLED_ALARM:
             _DISABLED_ALARM = False
@@ -477,11 +520,39 @@ def styling():
                 "font": ('Modern', 12, 'bold')
             }
         },
+        "TCheckbutton": {
+            "configure": {
+                "indicatorcolor": '#181818',
+                "foreground": 'white',
+                "focuscolor": '#181818',
+                "font": ('Modern', 14, 'bold'),
+                "indicatordiameter": 13,
+                "borderwidth": 2
+            },
+            "map": {
+                "foreground": [('pressed', '#303030'), ('active', '#414141')],
+                "indicatorcolor": [('selected', '#d90909'), ('pressed', '#414141')]
+            }
+        },
+        "TRadiobutton": {
+            "configure": {
+                "indicatorcolor": '#181818',
+                "foreground": 'white',
+                "focuscolor": '#181818',
+                "font": ('Modern', 15, 'bold'),
+                "indicatordiameter": 13,
+                "borderwidth": 2
+            },
+            "map": {
+                "foreground": [('pressed', '#303030'), ('active', '#414141')],
+                "indicatorcolor": [('selected', '#d90909'), ('pressed', '#414141')]
+            }
+        },
         "TNotebook": {
             "configure": {
                 "background": '#181818',  # Your margin color
                 # margins: left, top, right, separator
-                "tabmargins": [2, 5, 0, 0],
+                "tabmargins": [1, 5, 0, 0],
             }
         },
         "TNotebook.Tab": {
