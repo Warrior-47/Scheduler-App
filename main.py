@@ -25,9 +25,11 @@ class App(object):
         style.theme_use('dark')
 
         self.reset_handled = True
+
         # Validation #
-        self.validateHr = self.root.register(self.validate_hr)
-        self.validateMS = self.root.register(self.validate_min_sec)
+        validateHr = self.root.register(self.validate_hr)
+        validateHr12hrf = self.root.register(self.validate_hr_12hrf)
+        validateMS = self.root.register(self.validate_min_sec)
 
         # Tabs #
         self.tabs = ttk.Notebook(self.root)
@@ -63,7 +65,7 @@ class App(object):
         self.ent_hour = Entry(
             self.time_frame, font=('Modern', 20, 'bold'), insertbackground='white',
             fg='white', bg='#414141', width=4, justify='center', validate='key',
-            validatecommand=(self.validateHr, '%P'), relief=RIDGE, bd=4)
+            validatecommand=(validateHr, '%P'), relief=RIDGE, bd=4)
         self.ent_hour.place(x=80, y=85)
         self.ent_hour.insert(INSERT, '0')
         self.ent_hour.bind('<FocusOut>', self.entry_focus_out_handler)
@@ -71,7 +73,7 @@ class App(object):
         self.ent_min = Entry(
             self.time_frame, font=('Modern', 20, 'bold'), insertbackground='white',
             fg='white', bg='#414141', width=4, justify='center', validate='key',
-            validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
+            validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
         self.ent_min.place(x=250, y=85)
         self.ent_min.insert(INSERT, '0')
         self.ent_min.bind('<FocusOut>', self.entry_focus_out_handler)
@@ -79,7 +81,7 @@ class App(object):
         self.ent_sec = Entry(
             self.time_frame, font=('Modern', 20, 'bold'), insertbackground='white',
             fg='white', bg='#414141', width=4, justify='center', validate='key',
-            validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
+            validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
         self.ent_sec.place(x=420, y=85)
         self.ent_sec.insert(INSERT, '0')
         self.ent_sec.bind('<FocusOut>', self.entry_focus_out_handler)
@@ -126,10 +128,10 @@ class App(object):
         self.message_area.place(x=60, y=50)
 
         # Do Not Disturb
-        self.do_not_disturb = BooleanVar()
+        self.usr_do_not_disturb = BooleanVar()
         self.do_not_disturb_ckbox = ttk.Checkbutton(
-            self.message_frame, text='Do Not Disturb', cursor='hand2', variable=self.do_not_disturb)
-        self.do_not_disturb.set(False)
+            self.message_frame, text='Do Not Disturb', cursor='hand2', variable=self.usr_do_not_disturb)
+        self.usr_do_not_disturb.set(False)
         self.do_not_disturb_ckbox.place(x=377, y=19)
 
         #
@@ -152,21 +154,24 @@ class App(object):
         # "From" Entries
         self.from_hr = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                              fg='white', bg='#414141', width=4, justify='center', validate='key',
-                             validatecommand=(self.validateHr, '%P'), relief=RIDGE, bd=4)
+                             validatecommand=(validateHr12hrf, '%P'), relief=RIDGE, bd=4)
         self.from_hr.place(x=75, y=85)
         self.from_hr.insert(INSERT, '0')
+        self.from_hr.bind('<FocusOut>', self.entry_focus_out_handler)
 
         self.from_min = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                               fg='white', bg='#414141', width=4, justify='center', validate='key',
-                              validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
+                              validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
         self.from_min.place(x=245, y=85)
         self.from_min.insert(INSERT, '0')
+        self.from_min.bind('<FocusOut>', self.entry_focus_out_handler)
 
         self.from_sec = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                               fg='white', bg='#414141', width=4, justify='center', validate='key',
-                              validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
+                              validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
         self.from_sec.place(x=415, y=85)
         self.from_sec.insert(INSERT, '0')
+        self.from_sec.bind('<FocusOut>', self.entry_focus_out_handler)
 
         # "From" Entry Labels
         self.from_hr_lbl = Label(
@@ -209,21 +214,24 @@ class App(object):
         # "To" Entries
         self.to_hr = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                            fg='white', bg='#414141', width=4, justify='center', validate='key',
-                           validatecommand=(self.validateHr, '%P'), relief=RIDGE, bd=4)
+                           validatecommand=(validateHr12hrf, '%P'), relief=RIDGE, bd=4)
         self.to_hr.place(x=75, y=245)
         self.to_hr.insert(INSERT, '0')
+        self.to_hr.bind('<FocusOut>', self.entry_focus_out_handler)
 
         self.to_min = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                             fg='white', bg='#414141', width=4, justify='center', validate='key',
-                            validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
+                            validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
         self.to_min.place(x=245, y=245)
         self.to_min.insert(INSERT, '0')
+        self.to_min.bind('<FocusOut>', self.entry_focus_out_handler)
 
         self.to_sec = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                             fg='white', bg='#414141', width=4, justify='center', validate='key',
-                            validatecommand=(self.validateMS, '%P'), relief=RIDGE, bd=4)
+                            validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
         self.to_sec.place(x=415, y=245)
         self.to_sec.insert(INSERT, '0')
+        self.to_sec.bind('<FocusOut>', self.entry_focus_out_handler)
 
         # "To" Entry Labels
         self.to_hr_lbl = Label(
@@ -265,6 +273,8 @@ class App(object):
                                           command=self.no_disturb_schedule_save)
         self.save_no_disturb_btn.pack()
 
+        self.do_not_disturb = False
+        self.saved_date = None
         #
         # Starting Alarm Timer #
         self.schedule_alarm()
@@ -272,7 +282,45 @@ class App(object):
     #
     # Methods #
     def no_disturb_schedule_save(self):
-        pass
+        """
+        Stores the "Do Not Disturb" time schedules in the database
+
+        """
+        # Taking values from the entries
+        if self.from_am_pm.get() and self.to_am_pm.get():
+            from_time = f'{self.from_hr.get()}:{self.from_min.get()}:{self.from_sec.get()} {self.from_am_pm.get()}'
+            to_time = f'{self.to_hr.get()}:{self.to_min.get()}:{self.to_sec.get()} {self.to_am_pm.get()}'
+
+            query = f"INSERT INTO do_not_disturb(from_time, to_time) VALUES('{from_time}', '{to_time}')"
+            try:
+                # Inserting into database
+                cur.execute(query)
+                con.commit()
+
+                # Changing entries back to default values
+                self.from_hr.delete(0, END)
+                self.from_min.delete(0, END)
+                self.from_sec.delete(0, END)
+                self.from_hr.insert(INSERT, '0')
+                self.from_min.insert(INSERT, '0')
+                self.from_sec.insert(INSERT, '0')
+                self.from_am_pm.set(None)
+
+                self.to_hr.delete(0, END)
+                self.to_min.delete(0, END)
+                self.to_sec.delete(0, END)
+                self.to_hr.insert(INSERT, '0')
+                self.to_min.insert(INSERT, '0')
+                self.to_sec.insert(INSERT, '0')
+                self.to_am_pm.set(None)
+
+                messagebox.showinfo('Success', 'Schedule Set.')
+            except:
+                messagebox.showerror(
+                    'Failed', 'Could Not Set Schedule.', icon='error')
+        else:
+            messagebox.showerror(
+                'Warning', "You have to Select either 'AM' or 'PM'")
 
     def entry_focus_out_handler(self, event):
         """Enters a "0" in entries if the entry is empty when it is focused out
@@ -311,12 +359,19 @@ class App(object):
         Saves the given Scheduled Time
 
         """
-        time = f'{self.ent_hour.get()}:{self.ent_min.get()}:{self.ent_sec.get()}'  # Storing the time from the entries
+        # Storing the time from the entries
+        time = f'{self.ent_hour.get()}:{self.ent_min.get()}:{self.ent_sec.get()}'
+
         # Storing the message
         message = self.message_area.get(0.0, 'end-1c')
+
         # Query to insert info in the database
         query = f"INSERT INTO alarm_info(time, message) VALUES('{time}', '{message}');"
         try:
+            # Executing the query
+            cur.execute(query)
+            con.commit()
+
             # Clearing the entries and going back to default values
             self.ent_hour.delete(0, END)
             self.ent_min.delete(0, END)
@@ -327,14 +382,10 @@ class App(object):
 
             self.message_area.delete(0.0, 'end-1c')
 
-            # Executing the query
-            cur.execute(query)
-            con.commit()
-
-            messagebox.showinfo('Success', 'Schedule Set')
+            messagebox.showinfo('Success', 'Schedule Set.')
         except:
             messagebox.showerror(
-                'Warning', 'Could not Save to Database', icon='warning')
+                'Warning', 'Could not Save to Database.', icon='warning')
 
     def reset(self):
         """
@@ -356,7 +407,7 @@ class App(object):
                     'Reset', 'Failed to Clear Schedules. Contact Developer', icon='warning')
 
     def validate_hr(self, input):
-        """Validate if the correct type of input is given to the hours entry
+        """Validate if the correct type of input is given to the hours entry. For 24 hour format.
 
         Args:
             input (str): The string in the entry typed by the user
@@ -368,6 +419,29 @@ class App(object):
             # Checks if the current string in the entry is less than 24 and does not contain space
             int(input)
             if int(input) < 24 and input[-1] != ' ':
+                return True
+            else:
+                return False
+
+        except ValueError:
+            if input == '':
+                return True
+            else:
+                return False
+
+    def validate_hr_12hrf(self, input):
+        """Validate if the correct type of input is given to the hours entry. For 12 hour format
+
+        Args:
+            input (str): The string in the entry typed by the user
+
+        Returns:
+            boolean: True if character typed is currect, False otherwise
+        """
+        try:
+            # Checks if the current string in the entry is less than 13 and does not contain space
+            int(input)
+            if int(input) < 13 and input[-1] != ' ':
                 return True
             else:
                 return False
@@ -408,21 +482,65 @@ class App(object):
         of running the alarm. Otherwise checks again in 5 seconds.
 
         """
+        self.check_disturb_mode()
         # Checking for schedules in database
         result = cur.execute('SELECT time, message from alarm_info').fetchone()
-        if result is not None:
+        if result:
             global _ALARM_GUI_RUNNING, _DISABLED_ALARM
             # Splitting the time into hours, minutes and seconds
             time = result[0].split(':')
             scheduled_time = datetime.now(
             ) + timedelta(hours=int(time[0]), minutes=int(time[1]), seconds=int(time[2]))  # The time when the alarm should ring
 
-            if not _ALARM_GUI_RUNNING and not _DISABLED_ALARM and not self.do_not_disturb.get():
+            if not _ALARM_GUI_RUNNING and not _DISABLED_ALARM and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
                 self.validate_alarm(scheduled_time, result[1])
                 return
 
         # Scheduling a recheck after 5 seconds
         self.root.after(5000, self.schedule_alarm)
+
+    def check_disturb_mode(self):
+        """
+        Checks if do not disturb should be turned on based on scheduled time.
+
+        """
+        now = datetime.now()
+
+        result = cur.execute(
+            'SELECT from_time, to_time FROM do_not_disturb').fetchone()
+        if result:
+            if (result[0][-2:]+result[1][-2:]) != 'PMAM':
+                # For "Do Not Disturb" schedules that start and end the same day
+                time_format = '%I:%M:%S %p'
+                from_time = datetime.strptime(result[0], time_format).time()
+                to_time = datetime.strptime(result[1], time_format).time()
+                now = now.time()
+
+                if now >= from_time and now < to_time:
+                    self.do_not_disturb = True
+                else:
+                    self.do_not_disturb = False
+            else:
+                # For "Do Not Disturb" schedules that start and end on different days
+                if not self.do_not_disturb:
+                    self.saved_date = now
+
+                time_format = '%Y-%m-%d %I:%M:%S %p'
+                from_time = datetime.strptime(
+                    str(self.saved_date.date())+" "+result[0], time_format)
+                to_time = datetime.strptime(
+                    str((self.saved_date+timedelta(days=1)).date())+" "+result[1], time_format)
+
+                print('now: '+str(now), 'from: ' +
+                      str(from_time), 'to: '+str(to_time)+'\n', sep='\n')
+
+                if now >= from_time and now < to_time:
+                    self.do_not_disturb = True
+                else:
+                    self.do_not_disturb = False
+
+        else:
+            self.do_not_disturb = False
 
     def validate_alarm(self, scheduled_time, message):
         """Checks if it is time to ring the alarm. Checks every 1 second. Also handles the reset event.
@@ -431,11 +549,11 @@ class App(object):
             scheduled_time (datetime.datetime): The list that contains the hours, minutes and seconds of the schedule
             message (str): The message to be shown when alarm rings
         """
-        if datetime.now() >= scheduled_time and self.reset_handled and not self.do_not_disturb.get():
+        if datetime.now() >= scheduled_time and self.reset_handled and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
             self.sound_alarm(message)
             self.schedule_alarm()
             return
-        elif not self.reset_handled or self.do_not_disturb.get():
+        elif not self.reset_handled or self.usr_do_not_disturb.get() or self.do_not_disturb:
             self.reset_handled = True
             self.schedule_alarm()
             return
