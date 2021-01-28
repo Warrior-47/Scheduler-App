@@ -37,10 +37,12 @@ class App(object):
 
         self.schedule_time_tab = ttk.Frame(self.tabs)
         self.no_disturb_time_tab = ttk.Frame(self.tabs)
+        self.schedules_tab = ttk.Frame(self.tabs)
 
         self.tabs.add(self.schedule_time_tab, text='Schedule Timer')
         self.tabs.add(self.no_disturb_time_tab,
                       text='Do Not Disturb')
+        self.tabs.add(self.schedules_tab, text='Schedules')
 
         # Frames #
         self.time_frame = Frame(
@@ -54,6 +56,10 @@ class App(object):
         self.do_not_disturb_frame = Frame(
             self.no_disturb_time_tab, width=500, height=370, bg='#181818')
         self.do_not_disturb_frame.pack(fill=X)
+
+        self.schedules_frame = Frame(
+            self.schedules_tab, width=500, height=300, bg='#181818')
+        self.schedules_frame.pack(fill=BOTH, expand=True)
 
         # Time Frame Components #
         # Sub Heading
@@ -108,11 +114,6 @@ class App(object):
         self.colon_lbl2 = Label(
             self.time_frame, image=self.colon, bg='#181818')
         self.colon_lbl2.place(x=350, y=88)
-
-        # Reset Timers
-        self.reset_btn = Button(
-            self.time_frame, text='Reset Schedules', font=('Modern', 12, 'bold'), bg='#414141', width=15, relief=FLAT, fg='white', command=self.reset)
-        self.reset_btn.place(x=430, y=20)
 
         #
         # Message Frame Components #
@@ -270,32 +271,148 @@ class App(object):
         # Do not Disturb save button #
         self.save_no_disturb_btn = Button(self.no_disturb_time_tab, text='Save', font=('Modern', 15, 'bold'),
                                           bg='#414141', relief=FLAT, fg='white', width=13,
-                                          command=self.no_disturb_schedule_save)
+                                          command=self.dont_disturb_schedule_save)
         self.save_no_disturb_btn.pack()
 
+        #
+        # Do Not Disturb variables #
         self.do_not_disturb = False
         self.saved_date = None
+
+        #
+        # Schedules Frame Components #
+        # Headings Labels
+        self.time_list_lbl = Label(
+            self.schedules_frame, text='Time Schedules:', fg='white', font='Modern 15 bold', bg='#181818')
+        self.time_list_lbl.grid(
+            row=0, column=0, sticky=W, padx=15, pady=(10, 0))
+
+        self.disturb_list_lbl = Label(
+            self.schedules_frame, text='Do Not Disturb Schedules:', fg='white', font='Modern 15 bold', bg='#181818')
+        self.disturb_list_lbl.grid(
+            row=2, column=0, sticky=W, pady=(10, 0), padx=15)
+
+        # Listboxes
+        self.time_listbox = Listbox(
+            self.schedules_frame, width=64, height=6, bg='#414141', fg='white', highlightbackground='black',
+            font='Modern 13 bold', selectbackground='black', activestyle=NONE, selectmode=BROWSE)
+        self.disturb_listbox = Listbox(
+            self.schedules_frame, width=64, height=6, bg='#414141', fg='white', highlightbackground='black',
+            font='Modern 13 bold', selectbackground='black', activestyle=NONE, selectmode=BROWSE)
+
+        self.update_time_schedules()
+        self.update_disturb_schedules()
+
+        self.time_listbox.grid(row=1, column=0, padx=(15, 0), pady=(0, 10))
+        self.disturb_listbox.grid(row=3, column=0, padx=(15, 0), pady=(0, 10))
+
+        # Scroll Bars
+        time_scroll = ttk.Scrollbar(
+            self.schedules_frame, orient=VERTICAL, command=self.time_listbox.yview)
+        time_scroll.grid(row=1, column=1, pady=(0, 10), sticky=NS)
+        self.time_listbox.config(yscrollcommand=time_scroll.set)
+
+        disturb_scroll = ttk.Scrollbar(
+            self.schedules_frame, orient=VERTICAL, command=self.disturb_listbox.yview)
+        disturb_scroll.grid(row=3, column=1, pady=(0, 10), sticky=NS)
+        self.disturb_listbox.config(yscrollcommand=disturb_scroll.set)
+
+        # Buttons
+        self.update_any_schedule_btn = Button(self.schedules_frame, text='Update', font=('Modern', 14, 'bold'),
+                                              bg='#414141', relief=FLAT, fg='white', width=13)
+        self.update_any_schedule_btn.grid(
+            row=4, column=0, sticky=W, padx=20, pady=20)
+
+        self.delete_any_schedule_btn = Button(self.schedules_frame, text='Delete', font=('Modern', 14, 'bold'),
+                                              bg='#414141', relief=FLAT, fg='white', width=13, command=self.delete_schedule)
+        self.delete_any_schedule_btn.grid(row=4, column=0, sticky=E)
+
         #
         # Starting Alarm Timer #
         self.schedule_alarm()
 
     #
     # Methods #
-    def no_disturb_schedule_save(self):
+    def delete_schedule(self):
+        if self.time_listbox.curselection():
+            answer = messagebox.askyesno(
+                'Delete', 'Are you sure?', icon='info')
+            if answer:
+                selected = self.time_listbox.curselection()[0]
+                selected_id = self.time_listbox.get(selected).split('|')[0]
+
+                query = f'DELETE FROM alarm_info where alarm_id = {selected_id}'
+                try:
+                    cur.execute(query)
+                    con.commit()
+                    self.reset_handled = False
+                    self.time_listbox.delete(selected)
+                except:
+                    messagebox.showerror(
+                        'Failed.', 'Could Not Delete from Database.\nContact Developer.', icon='error')
+
+        elif self.disturb_listbox.curselection():
+            selected = self.disturb_listbox.curselection()[0]
+            selected_id = self.disturb_listbox.get(selected).split('|')[0]
+
+            query = f'DELETE FROM do_not_disturb where id = {selected_id}'
+            try:
+                cur.execute(query)
+                con.commit()
+                self.disturb_listbox.delete(selected)
+            except:
+                messagebox.showerror(
+                    'Failed', 'Could Not Delete from Database./nContact Developer.', icon='error')
+
+    def update_time_schedules(self):
+        res = cur.execute('SELECT * FROM alarm_info').fetchall()
+        if res:
+            self.time_listbox.delete(0, END)
+
+            ids, times, messages = zip(*res)
+
+            separated_time = [[t for t in x.split(':')] for x in times]
+            items = [f'{id_}| Time: {t[0]} Hr(s), {t[1]} Min(s), {t[2]} Sec(s). Message: {message}' for id_, message, t in zip(
+                ids, messages, separated_time)]
+
+            for i, item in enumerate(items):
+                self.time_listbox.insert(i, item)
+
+        else:
+            self.time_listbox.delete(0, END)
+
+    def update_disturb_schedules(self):
+        res = cur.execute('SELECT * FROM do_not_disturb').fetchall()
+        if res:
+            self.disturb_listbox.delete(0, END)
+
+            items = [f'{id_}| From: {from_}, To: {to}' for id_,
+                     from_, to in res]
+
+            for i, item in enumerate(items):
+                self.disturb_listbox.insert(i, item)
+
+        else:
+            self.disturb_listbox.delete(0, END)
+
+    def dont_disturb_schedule_save(self):
         """
         Stores the "Do Not Disturb" time schedules in the database
 
         """
         # Taking values from the entries
         if self.from_am_pm.get() and self.to_am_pm.get():
-            from_time = f'{self.from_hr.get()}:{self.from_min.get()}:{self.from_sec.get()} {self.from_am_pm.get()}'
-            to_time = f'{self.to_hr.get()}:{self.to_min.get()}:{self.to_sec.get()} {self.to_am_pm.get()}'
+            from_time = f'{int(self.from_hr.get())}:{int(self.from_min.get())}:{int(self.from_sec.get())} {self.from_am_pm.get()}'
+            to_time = f'{int(self.to_hr.get())}:{int(self.to_min.get())}:{int(self.to_sec.get())} {self.to_am_pm.get()}'
 
             query = f"INSERT INTO do_not_disturb(from_time, to_time) VALUES('{from_time}', '{to_time}')"
             try:
                 # Inserting into database
                 cur.execute(query)
                 con.commit()
+
+                # Updating the GUI
+                self.update_disturb_schedules()
 
                 # Changing entries back to default values
                 self.from_hr.delete(0, END)
@@ -304,7 +421,7 @@ class App(object):
                 self.from_hr.insert(INSERT, '0')
                 self.from_min.insert(INSERT, '0')
                 self.from_sec.insert(INSERT, '0')
-                self.from_am_pm.set(None)
+                self.from_am_pm.set('')
 
                 self.to_hr.delete(0, END)
                 self.to_min.delete(0, END)
@@ -312,7 +429,7 @@ class App(object):
                 self.to_hr.insert(INSERT, '0')
                 self.to_min.insert(INSERT, '0')
                 self.to_sec.insert(INSERT, '0')
-                self.to_am_pm.set(None)
+                self.to_am_pm.set('')
 
                 messagebox.showinfo('Success', 'Schedule Set.')
             except:
@@ -360,7 +477,7 @@ class App(object):
 
         """
         # Storing the time from the entries
-        time = f'{self.ent_hour.get()}:{self.ent_min.get()}:{self.ent_sec.get()}'
+        time = f'{int(self.ent_hour.get())}:{int(self.ent_min.get())}:{int(self.ent_sec.get())}'
 
         # Storing the message
         message = self.message_area.get(0.0, 'end-1c')
@@ -371,6 +488,9 @@ class App(object):
             # Executing the query
             cur.execute(query)
             con.commit()
+
+            # Updating GUI
+            self.update_time_schedules()
 
             # Clearing the entries and going back to default values
             self.ent_hour.delete(0, END)
@@ -386,25 +506,6 @@ class App(object):
         except:
             messagebox.showerror(
                 'Warning', 'Could not Save to Database.', icon='warning')
-
-    def reset(self):
-        """
-        Deletes all the scheduled times from the database
-
-        """
-        answer = messagebox.askyesno(
-            'Reset', 'Are You Sure You Want to Delete All Your Schedules?', icon='info')
-        if answer:
-            query = 'DELETE FROM alarm_info'
-            try:
-                cur.execute(query)
-                con.commit()
-                # Setting the parameter to make sure the alarm is also resetted
-                self.reset_handled = False
-                messagebox.showinfo('Reset', 'All Schedules Cleared')
-            except:
-                messagebox.showerror(
-                    'Reset', 'Failed to Clear Schedules. Contact Developer', icon='warning')
 
     def validate_hr(self, input):
         """Validate if the correct type of input is given to the hours entry. For 24 hour format.
@@ -497,7 +598,7 @@ class App(object):
                 return
 
         # Scheduling a recheck after 5 seconds
-        self.root.after(5000, self.schedule_alarm)
+        self.root.after(1000, self.schedule_alarm)
 
     def check_disturb_mode(self):
         """
@@ -530,9 +631,6 @@ class App(object):
                     str(self.saved_date.date())+" "+result[0], time_format)
                 to_time = datetime.strptime(
                     str((self.saved_date+timedelta(days=1)).date())+" "+result[1], time_format)
-
-                print('now: '+str(now), 'from: ' +
-                      str(from_time), 'to: '+str(to_time)+'\n', sep='\n')
 
                 if now >= from_time and now < to_time:
                     self.do_not_disturb = True
@@ -685,6 +783,17 @@ def styling():
                 # Tab color when selected
                 "background": [("selected", '#181818')],
                 "expand": [("selected", [1, 1, 1, 0])]  # text margins
+            }
+        },
+        "TScrollbar": {
+            "configure": {
+                "background": '#181818',
+                "arrowcolor": 'white',
+                "arrowsize": 12,
+                "troughcolor": 'white'
+            },
+            "map": {
+                "background": [('active', '#303030')]
             }
         }
     })
