@@ -29,10 +29,6 @@ class App(object):
         self.reset_handled = True
         self.update_GUI_running = False
 
-        # Update Dictionaries
-        self.time_dict = {}
-        self.disturb_dict = {}
-
         # Validation #
         validateHr = self.root.register(self.validate_hr)
         validateHr12hrf = self.root.register(self.validate_hr_12hrf)
@@ -340,8 +336,33 @@ class App(object):
 
     #
     # Methods #
-    def update_database(self):
-        pass
+    def update_database(self, table_name, id_, **kwargs):
+        """Updates the database data.
+
+        Args:
+            table_name (str): The name of the table that has to be updated.
+            id_ (int): The primary key value of the row of data being updated.
+        """
+        # Building the query
+        query = f'UPDATE {table_name} SET '
+        query += ', '.join([f"{attr} = '{value}'" for attr,
+                            value in kwargs.items()]) + f'WHERE id = {int(id_)};'
+        try:
+            cur.execute(query)
+            con.commit()
+
+            # Checks and updates the correct listbox.
+            if table_name == 'alarm_info':
+                self.reset_handled = False
+                self.update_time_schedules()
+
+            else:
+                self.update_disturb_schedules()
+
+            messagebox.showinfo('Success', 'Successfully Updated.')
+        except:
+            messagebox.showerror(
+                'Failed', 'Could Not Update the Database. Contact Developer.', icon='error')
 
     def run_update_GUI(self):
         """
@@ -463,8 +484,10 @@ class App(object):
         """
         # Taking values from the entries
         if self.from_am_pm.get() and self.to_am_pm.get():
-            from_time = f'{int(self.from_hr.get())}:{int(self.from_min.get())}:{int(self.from_sec.get())} {self.from_am_pm.get()}'
-            to_time = f'{int(self.to_hr.get())}:{int(self.to_min.get())}:{int(self.to_sec.get())} {self.to_am_pm.get()}'
+            f_hr = int(self.from_hr.get()) if self.from_hr.get() != '0' else 12
+            t_hr = int(self.to_hr.get()) if self.to_hr.get() != '0' else 12
+            from_time = f'{f_hr}:{int(self.from_min.get())}:{int(self.from_sec.get())} {self.from_am_pm.get()}'
+            to_time = f'{t_hr}:{int(self.to_min.get())}:{int(self.to_sec.get())} {self.to_am_pm.get()}'
 
             query = f"INSERT INTO do_not_disturb(from_time, to_time) VALUES('{from_time}', '{to_time}')"
             try:
@@ -497,8 +520,8 @@ class App(object):
                 messagebox.showerror(
                     'Failed', 'Could Not Set Schedule.', icon='error')
         else:
-            messagebox.showerror(
-                'Warning', "You have to Select either 'AM' or 'PM'")
+            messagebox.showwarning(
+                'Warning', "You have to Select either 'AM' or 'PM'", icon='warning')
 
     def entry_focus_out_handler(self, event):
         """Enters a "0" in entries if the entry is empty when it is focused out
@@ -537,6 +560,12 @@ class App(object):
         Saves the given Scheduled Time
 
         """
+        # Making sure data is valid
+        if self.ent_hour.get() == '0' and self.ent_min.get() == '0' and self.ent_sec.get() == '0':
+            messagebox.showwarning(
+                'Warning', 'Scheduled time Cannot be All Zero.', icon='warning')
+            return
+
         # Storing the time from the entries
         time = f'{int(self.ent_hour.get())}:{int(self.ent_min.get())}:{int(self.ent_sec.get())}'
 

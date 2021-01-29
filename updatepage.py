@@ -1,5 +1,7 @@
 from tkinter import *
 
+from re import split
+
 
 def validate_hr(input):
     """Validate if the correct type of input is given to the hours entry. For 24 hour format.
@@ -95,12 +97,13 @@ class UpdateTimeGUI(Toplevel):
         self.geometry('572x480+600+250')
         self.resizable(False, False)
         self.iconbitmap('Images/icon.ico')
+        self.protocol('WM_DELETE_WINDOW', self.on_closing)
 
         # Data Parsing #
         time_data, message_data = data[0], data[1]
         self.id_ = time_data.split('|')[0]
-        self.time = [x for x in time_data.split() if x.isnumeric()]
-        self.message = message_data.split(':')[1].strip()
+        time = [x for x in time_data.split() if x.isnumeric()]
+        message = message_data.split(':')[1].strip()
 
         # Validation #
         validateHr = self.register(validate_hr)
@@ -128,7 +131,7 @@ class UpdateTimeGUI(Toplevel):
             fg='white', bg='#414141', width=4, justify='center', validate='key',
             validatecommand=(validateHr, '%P'), relief=RIDGE, bd=4)
         self.ent_hour.place(x=80, y=85)
-        self.ent_hour.insert(INSERT, self.time[0])
+        self.ent_hour.insert(INSERT, time[0])
         self.ent_hour.bind('<FocusOut>', entry_focus_out_handler)
 
         self.ent_min = Entry(
@@ -136,7 +139,7 @@ class UpdateTimeGUI(Toplevel):
             fg='white', bg='#414141', width=4, justify='center', validate='key',
             validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
         self.ent_min.place(x=250, y=85)
-        self.ent_min.insert(INSERT, self.time[1])
+        self.ent_min.insert(INSERT, time[1])
         self.ent_min.bind('<FocusOut>', entry_focus_out_handler)
 
         self.ent_sec = Entry(
@@ -144,7 +147,7 @@ class UpdateTimeGUI(Toplevel):
             fg='white', bg='#414141', width=4, justify='center', validate='key',
             validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
         self.ent_sec.place(x=420, y=85)
-        self.ent_sec.insert(INSERT, self.time[2])
+        self.ent_sec.insert(INSERT, time[2])
         self.ent_sec.bind('<FocusOut>', entry_focus_out_handler)
 
         # Entry Labels
@@ -181,7 +184,7 @@ class UpdateTimeGUI(Toplevel):
         self.message_area = Text(
             self.message_frame, width=40, height=6, bg='#414141',
             fg='white', font=('Modern', 18, 'bold'), wrap=WORD, insertbackground='white')
-        self.message_area.insert(INSERT, self.message)
+        self.message_area.insert(INSERT, message)
         self.message_area.place(x=60, y=50)
 
         # Update Button #
@@ -191,7 +194,27 @@ class UpdateTimeGUI(Toplevel):
 
     # Methods #
     def update(self):
-        pass
+        """
+        Updates the database data according to the input
+
+        """
+        # Making sure data is valid
+        if self.ent_hour.get() == '0' and self.ent_min.get() == '0' and self.ent_sec.get() == '0':
+            messagebox.showwarning(
+                'Warning', 'Scheduled time Cannot be All Zero.', icon='warning')
+            return
+
+        time = f'{int(self.ent_hour.get())}:{int(self.ent_min.get())}:{int(self.ent_sec.get())}'
+        message = self.message_area.get(0.0, 'end-1c')
+
+        self.higher_level.update_database(
+            'alarm_info', self.id_, time=time, message=message)
+        self.higher_level.update_GUI_running = False
+        self.destroy()
+
+    def on_closing(self):
+        self.higher_level.update_GUI_running = False
+        self.destroy()
 
 
 class UpdateDisturbGUI(Toplevel):
@@ -209,6 +232,15 @@ class UpdateDisturbGUI(Toplevel):
         self.geometry('572x480+600+250')
         self.resizable(False, False)
         self.iconbitmap('Images/icon.ico')
+        self.protocol('WM_DELETE_WINDOW', self.on_closing)
+
+        # Data Parsing #
+        from_component, to_component = data[0], data[1]
+        self.id_ = from_component.split('|')[0]
+        from_radio_value = from_component[-2:]
+        to_radio_value = to_component[-2:]
+        from_time = [x for x in split(':| ', from_component) if x.isnumeric()]
+        to_time = [x for x in split(':| ', to_component) if x.isnumeric()]
 
         # Validation #
         validateHr = self.register(validate_hr)
@@ -231,21 +263,21 @@ class UpdateDisturbGUI(Toplevel):
                              fg='white', bg='#414141', width=4, justify='center', validate='key',
                              validatecommand=(validateHr12hrf, '%P'), relief=RIDGE, bd=4)
         self.from_hr.place(x=75, y=85)
-        self.from_hr.insert(INSERT, '0')
+        self.from_hr.insert(INSERT, from_time[0])
         self.from_hr.bind('<FocusOut>', entry_focus_out_handler)
 
         self.from_min = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                               fg='white', bg='#414141', width=4, justify='center', validate='key',
                               validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
         self.from_min.place(x=245, y=85)
-        self.from_min.insert(INSERT, '0')
+        self.from_min.insert(INSERT, from_time[1])
         self.from_min.bind('<FocusOut>', entry_focus_out_handler)
 
         self.from_sec = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                               fg='white', bg='#414141', width=4, justify='center', validate='key',
                               validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
         self.from_sec.place(x=415, y=85)
-        self.from_sec.insert(INSERT, '0')
+        self.from_sec.insert(INSERT, from_time[2])
         self.from_sec.bind('<FocusOut>', entry_focus_out_handler)
 
         # "From" Entry Labels
@@ -281,6 +313,8 @@ class UpdateDisturbGUI(Toplevel):
             self.do_not_disturb_frame, text='PM', value='PM', cursor='hand2', var=self.from_am_pm)
         self.from_pm_radio.place(x=500, y=105)
 
+        self.from_am_pm.set(from_radio_value)
+
         # "To" Heading
         self.to_lbl = Label(self.do_not_disturb_frame,
                             text='To:', font=('Modern', 22, 'bold'), bg='#181818', fg='white')
@@ -291,21 +325,21 @@ class UpdateDisturbGUI(Toplevel):
                            fg='white', bg='#414141', width=4, justify='center', validate='key',
                            validatecommand=(validateHr12hrf, '%P'), relief=RIDGE, bd=4)
         self.to_hr.place(x=75, y=245)
-        self.to_hr.insert(INSERT, '0')
+        self.to_hr.insert(INSERT, to_time[0])
         self.to_hr.bind('<FocusOut>', entry_focus_out_handler)
 
         self.to_min = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                             fg='white', bg='#414141', width=4, justify='center', validate='key',
                             validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
         self.to_min.place(x=245, y=245)
-        self.to_min.insert(INSERT, '0')
+        self.to_min.insert(INSERT, to_time[1])
         self.to_min.bind('<FocusOut>', entry_focus_out_handler)
 
         self.to_sec = Entry(self.do_not_disturb_frame, font=('Modern', 20, 'bold'), insertbackground='white',
                             fg='white', bg='#414141', width=4, justify='center', validate='key',
                             validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
         self.to_sec.place(x=415, y=245)
-        self.to_sec.insert(INSERT, '0')
+        self.to_sec.insert(INSERT, to_time[2])
         self.to_sec.bind('<FocusOut>', entry_focus_out_handler)
 
         # "To" Entry Labels
@@ -341,6 +375,8 @@ class UpdateDisturbGUI(Toplevel):
             self.do_not_disturb_frame, text='PM', value='PM', cursor='hand2', var=self.to_am_pm)
         self.to_pm_radio.place(x=500, y=265)
 
+        self.to_am_pm.set(to_radio_value)
+
         #
         # Do not Disturb Update button #
         self.update_btn = Button(self, text='Update', font=('Modern', 15, 'bold'),
@@ -350,4 +386,20 @@ class UpdateDisturbGUI(Toplevel):
 
     # Methods #
     def update(self):
-        pass
+        """
+        Updates the database data according to the input
+
+        """
+        f_hr = int(self.from_hr.get()) if self.from_hr.get() != '0' else 12
+        t_hr = int(self.to_hr.get()) if self.to_hr.get() != '0' else 12
+        from_time = f'{f_hr}:{int(self.from_min.get())}:{int(self.from_sec.get())} {self.from_am_pm.get()}'
+        to_time = f'{t_hr}:{int(self.to_min.get())}:{int(self.to_sec.get())} {self.to_am_pm.get()}'
+
+        self.higher_level.update_database(
+            'do_not_disturb', self.id_, from_time=from_time, to_time=to_time)
+        self.higher_level.update_GUI_running = False
+        self.destroy()
+
+    def on_closing(self):
+        self.higher_level.update_GUI_running = False
+        self.destroy()
