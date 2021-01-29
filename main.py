@@ -5,6 +5,7 @@ from tkinter import *
 from datetime import datetime, timedelta
 
 import sqlite3
+import updatepage
 import winsound as ws
 
 con = sqlite3.connect('database.db')
@@ -24,7 +25,13 @@ class App(object):
         style = styling()
         style.theme_use('dark')
 
+        # Boolean Flags #
         self.reset_handled = True
+        self.update_GUI_running = False
+
+        # Update Dictionaries
+        self.time_dict = {}
+        self.disturb_dict = {}
 
         # Validation #
         validateHr = self.root.register(self.validate_hr)
@@ -138,7 +145,7 @@ class App(object):
         #
         # Buttons #
         self.save_btn = Button(
-            self.schedule_time_tab, text='Save', font=('Modern', 15, 'bold'), bg='#414141', relief=FLAT, fg='white', width=13, command=self.Save)
+            self.schedule_time_tab, text='Save', font=('Modern', 15, 'bold'), bg='#414141', relief=FLAT, fg='white', width=13, command=self.save)
         self.save_btn.pack(padx=(61, 0), pady=(20, 0), side='left')
 
         self.restart_alarm_btn = Button(
@@ -319,7 +326,7 @@ class App(object):
 
         # Buttons
         self.update_any_schedule_btn = Button(self.schedules_frame, text='Update', font=('Modern', 14, 'bold'),
-                                              bg='#414141', relief=FLAT, fg='white', width=13)
+                                              bg='#414141', relief=FLAT, fg='white', width=13, command=self.run_update_GUI)
         self.update_any_schedule_btn.grid(
             row=4, column=0, sticky=W, padx=20, pady=20)
 
@@ -333,25 +340,62 @@ class App(object):
 
     #
     # Methods #
+    def update_database(self):
+        pass
+
+    def run_update_GUI(self):
+        """
+        Opens the updating GUI depending on which type of item was selected, Scheduler time or "Do Not Disturb" item.
+
+        """
+        # Makes sure there is only one Update GUI running at one time.
+        if self.update_GUI_running:
+            messagebox.showwarning(
+                'Already Running', 'Another Update Interface is Active.\nClose Previous Window to Open Another.', icon='warning')
+            return
+
+        if self.time_listbox.curselection():
+            self.update_GUI_running = True
+
+            data = self.time_listbox.get(
+                self.time_listbox.curselection()[0]).split('.')
+            time_update = updatepage.UpdateTimeGUI(self, data)
+
+        elif self.disturb_listbox.curselection():
+            self.update_GUI_running = True
+
+            data = self.disturb_listbox.get(
+                self.disturb_listbox.curselection()[0]).split(',')
+            disturb_update = updatepage.UpdateDisturbGUI(self, data)
+
     def delete_schedule(self):
+        """
+        Deletes the selected listbox item from the database.
+
+        """
+        # Check if a scheduler time was selected
         if self.time_listbox.curselection():
             answer = messagebox.askyesno(
                 'Delete', 'Are you sure?', icon='info')
             if answer:
+                # If user confirms deletion, first stores the id of the schedule
                 selected = self.time_listbox.curselection()[0]
                 selected_id = self.time_listbox.get(selected).split('|')[0]
 
-                query = f'DELETE FROM alarm_info where alarm_id = {selected_id}'
+                query = f'DELETE FROM alarm_info where id = {selected_id}'
                 try:
                     cur.execute(query)
                     con.commit()
+
                     self.reset_handled = False
                     self.time_listbox.delete(selected)
                 except:
                     messagebox.showerror(
                         'Failed.', 'Could Not Delete from Database.\nContact Developer.', icon='error')
 
+        # Check if a 'Do Not Disturb' time was selected
         elif self.disturb_listbox.curselection():
+            # First stores the id of the schedule
             selected = self.disturb_listbox.curselection()[0]
             selected_id = self.disturb_listbox.get(selected).split('|')[0]
 
@@ -359,40 +403,57 @@ class App(object):
             try:
                 cur.execute(query)
                 con.commit()
+
                 self.disturb_listbox.delete(selected)
             except:
                 messagebox.showerror(
                     'Failed', 'Could Not Delete from Database./nContact Developer.', icon='error')
 
     def update_time_schedules(self):
+        """
+        Updates the Scheduler time listbox items if items are insert, deleted or updated.
+
+        """
         res = cur.execute('SELECT * FROM alarm_info').fetchall()
         if res:
+            # Deleting previous items as new items are concatenated to previous list.
             self.time_listbox.delete(0, END)
 
+            # Parsing the data into a fixed format.
             ids, times, messages = zip(*res)
 
             separated_time = [[t for t in x.split(':')] for x in times]
             items = [f'{id_}| Time: {t[0]} Hr(s), {t[1]} Min(s), {t[2]} Sec(s). Message: {message}' for id_, message, t in zip(
                 ids, messages, separated_time)]
 
+            # Inserting data into the time listbox.
             for i, item in enumerate(items):
                 self.time_listbox.insert(i, item)
 
         else:
+            # If there is nothing in the database, the listbox is cleared.
             self.time_listbox.delete(0, END)
 
     def update_disturb_schedules(self):
+        """
+        Updates the "Do Not Disturb" time listbox items if items are insert, deleted or updated.
+
+        """
         res = cur.execute('SELECT * FROM do_not_disturb').fetchall()
         if res:
+            # Deleting previous items as new items are concatenated to previous list.
             self.disturb_listbox.delete(0, END)
 
+            # Parsing data into a fixed format
             items = [f'{id_}| From: {from_}, To: {to}' for id_,
                      from_, to in res]
 
+            # Inserting data into the listbox.
             for i, item in enumerate(items):
                 self.disturb_listbox.insert(i, item)
 
         else:
+            # If there is nothing in the database, the listbox is cleared.
             self.disturb_listbox.delete(0, END)
 
     def dont_disturb_schedule_save(self):
@@ -471,7 +532,7 @@ class App(object):
         else:
             messagebox.showinfo('Restart', 'Already Running')
 
-    def Save(self):
+    def save(self):
         """
         Saves the given Scheduled Time
 
@@ -682,6 +743,7 @@ class Alarm(Toplevel):
         self.title('Alarm')
         self.geometry('400x200+500+150')
         self.resizable(False, False)
+        self.iconbitmap('Images/icon.ico')
         self.protocol('WM_DELETE_WINDOW', self.quit)
 
         # Label
