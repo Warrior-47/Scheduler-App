@@ -11,8 +11,8 @@ import winsound as ws
 con = sqlite3.connect('database.db')
 cur = con.cursor()
 
-_ALARM_GUI_RUNNING = False
-_DISABLED_ALARM = False
+_ALARM_GUI_RUNNING = {}
+_DISABLED_ALARM = {}
 
 
 class App(object):
@@ -717,31 +717,44 @@ class App(object):
         self.check_disturb_mode()
 
         # Checking for schedules in database
-        result = cur.execute('SELECT time, message from alarm_info').fetchone()
-        if result:
+        results = cur.execute('SELECT * from alarm_info').fetchall()
+        if results:
             global _ALARM_GUI_RUNNING, _DISABLED_ALARM
 
-            # Splitting the time into hours, minutes and seconds
-            time = result[0].split(':')
-            scheduled_time = datetime.now(
-            ) + timedelta(hours=int(time[0]), minutes=int(time[1]), seconds=int(time[2]))  # The time when the alarm should ring
+            for result in results:
+                id_, time_data, message = result
 
-            if not _ALARM_GUI_RUNNING and not _DISABLED_ALARM and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
-                self.validate_alarm(scheduled_time, result[1])
-                return
+                time = time_data.split(':')
 
+                scheduled_time = datetime.now(
+                ) + timedelta(hours=int(time[0]), minutes=int(time[1]), seconds=int(time[2]))  # The time when the alarm should ring
+
+                data_tuple = (scheduled_time, id_, message)
+
+                if _ALARM_GUI_RUNNING.get(id_, -1) == -1:
+                    _ALARM_GUI_RUNNING[id_] = False
+                    _DISABLED_ALARM[id_] = False
+
+                if not _ALARM_GUI_RUNNING[id_] and not _DISABLED_ALARM[id_] and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
+                    print('dhuksi')
+                    self.validate_alarm(data_tuple)
+                    print('gelam')
+            return
         # Scheduling a recheck after 5 seconds
         self.root.after(1000, self.schedule_alarm)
 
-    def validate_alarm(self, scheduled_time, message):
+    def validate_alarm(self, data):
         """Checks if it is time to ring the alarm. Checks every 1 second. Also handles the reset event and "Do Not Disturb" schedules
 
         Args:
             scheduled_time (datetime.datetime): The list that contains the hours, minutes and seconds of the schedule
             message (str): The message to be shown when alarm rings
         """
+        scheduled_time, *id_message = data
+        id_message = tuple(id_message)
+
         if datetime.now() >= scheduled_time and self.reset_handled and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
-            self.sound_alarm(message)
+            self.sound_alarm(id_message)
             self.schedule_alarm()
             return
         elif not self.reset_handled:
@@ -753,9 +766,9 @@ class App(object):
             return
 
         # Scheduling to recheck in 1 second
-        self.root.after(1000, self.validate_alarm, scheduled_time, message)
+        self.root.after(1000, self.validate_alarm, data)
 
-    def sound_alarm(self, message):
+    def sound_alarm(self, id_message):
         """Starts the alarm GUI.
 
         Args:
@@ -763,14 +776,14 @@ class App(object):
         """
         global _ALARM_GUI_RUNNING
 
-        _ALARM_GUI_RUNNING = True
-        alarm = Alarm(message)
+        _ALARM_GUI_RUNNING[id_message[0]] = True
+        alarm = Alarm(id_message)
 
 
 # Slave Window
 class Alarm(Toplevel):
 
-    def __init__(self, message):
+    def __init__(self, id_message):
         Toplevel.__init__(self)
 
         # Root Configuration
@@ -781,6 +794,7 @@ class Alarm(Toplevel):
         self.iconbitmap('Images/icon.ico')
         self.protocol('WM_DELETE_WINDOW', self.quit)
 
+        self.id_, message = id_message
         # Label
         message_label = Label(
             self, text=message, font=('Modern', 22, 'bold'))
@@ -807,8 +821,8 @@ class Alarm(Toplevel):
 
         """
         global _ALARM_GUI_RUNNING, _DISABLED_ALARM
-        _ALARM_GUI_RUNNING = False
-        _DISABLED_ALARM = True
+        _ALARM_GUI_RUNNING[self.id_] = False
+        _DISABLED_ALARM[self.id_] = True
         ws.PlaySound(None, ws.SND_PURGE)
         self.destroy()
 
@@ -818,7 +832,7 @@ class Alarm(Toplevel):
 
         """
         global _ALARM_GUI_RUNNING
-        _ALARM_GUI_RUNNING = False
+        _ALARM_GUI_RUNNING[self.id_] = False
 
         ws.PlaySound(None, ws.SND_PURGE)
         self.destroy()
