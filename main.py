@@ -336,6 +336,16 @@ class App(object):
 
     #
     # Methods #
+    def on_closing(self):
+        """
+        Confirms if the user actually wants to stop the Application.
+
+        """
+        answer = messagebox.askyesno(
+            'Close', 'If You Close This Window, the Alarm will not Repeat.\nDo You Really Want to Quit?', icon='info')
+        if answer:
+            self.root.destroy()
+
     def update_database(self, table_name, id_, **kwargs):
         """Updates the database data.
 
@@ -477,52 +487,6 @@ class App(object):
             # If there is nothing in the database, the listbox is cleared.
             self.disturb_listbox.delete(0, END)
 
-    def dont_disturb_schedule_save(self):
-        """
-        Stores the "Do Not Disturb" time schedules in the database
-
-        """
-        # Taking values from the entries
-        if self.from_am_pm.get() and self.to_am_pm.get():
-            f_hr = int(self.from_hr.get()) if self.from_hr.get() != '0' else 12
-            t_hr = int(self.to_hr.get()) if self.to_hr.get() != '0' else 12
-            from_time = f'{f_hr}:{int(self.from_min.get())}:{int(self.from_sec.get())} {self.from_am_pm.get()}'
-            to_time = f'{t_hr}:{int(self.to_min.get())}:{int(self.to_sec.get())} {self.to_am_pm.get()}'
-
-            query = f"INSERT INTO do_not_disturb(from_time, to_time) VALUES('{from_time}', '{to_time}')"
-            try:
-                # Inserting into database
-                cur.execute(query)
-                con.commit()
-
-                # Updating the GUI
-                self.update_disturb_schedules()
-
-                # Changing entries back to default values
-                self.from_hr.delete(0, END)
-                self.from_min.delete(0, END)
-                self.from_sec.delete(0, END)
-                self.from_hr.insert(INSERT, '0')
-                self.from_min.insert(INSERT, '0')
-                self.from_sec.insert(INSERT, '0')
-                self.from_am_pm.set('')
-
-                self.to_hr.delete(0, END)
-                self.to_min.delete(0, END)
-                self.to_sec.delete(0, END)
-                self.to_hr.insert(INSERT, '0')
-                self.to_min.insert(INSERT, '0')
-                self.to_sec.insert(INSERT, '0')
-                self.to_am_pm.set('')
-
-                messagebox.showinfo('Success', 'Schedule Set.')
-            except:
-                messagebox.showerror(
-                    'Failed', 'Could Not Set Schedule.', icon='error')
-        else:
-            messagebox.showwarning(
-                'Warning', "You have to Select either 'AM' or 'PM'", icon='warning')
-
     def entry_focus_out_handler(self, event):
         """Enters a "0" in entries if the entry is empty when it is focused out
 
@@ -531,16 +495,6 @@ class App(object):
         """
         if event.widget.get() == '':
             event.widget.insert(INSERT, 0)
-
-    def on_closing(self):
-        """
-        Confirms if the user actually wants to stop the Application.
-
-        """
-        answer = messagebox.askyesno(
-            'Close', 'If You Close This Window, the Alarm will not Repeat.\nDo You Really Want to Quit?', icon='info')
-        if answer:
-            self.root.destroy()
 
     def restart(self):
         """
@@ -596,6 +550,52 @@ class App(object):
         except:
             messagebox.showerror(
                 'Warning', 'Could not Save to Database.', icon='warning')
+
+    def dont_disturb_schedule_save(self):
+        """
+        Stores the "Do Not Disturb" time schedules in the database
+
+        """
+        # Taking values from the entries
+        if self.from_am_pm.get() and self.to_am_pm.get():
+            f_hr = int(self.from_hr.get()) if self.from_hr.get() != '0' else 12
+            t_hr = int(self.to_hr.get()) if self.to_hr.get() != '0' else 12
+            from_time = f'{f_hr}:{int(self.from_min.get())}:{int(self.from_sec.get())} {self.from_am_pm.get()}'
+            to_time = f'{t_hr}:{int(self.to_min.get())}:{int(self.to_sec.get())} {self.to_am_pm.get()}'
+
+            query = f"INSERT INTO do_not_disturb(from_time, to_time) VALUES('{from_time}', '{to_time}')"
+            try:
+                # Inserting into database
+                cur.execute(query)
+                con.commit()
+
+                # Updating the GUI
+                self.update_disturb_schedules()
+
+                # Changing entries back to default values
+                self.from_hr.delete(0, END)
+                self.from_min.delete(0, END)
+                self.from_sec.delete(0, END)
+                self.from_hr.insert(INSERT, '0')
+                self.from_min.insert(INSERT, '0')
+                self.from_sec.insert(INSERT, '0')
+                self.from_am_pm.set('')
+
+                self.to_hr.delete(0, END)
+                self.to_min.delete(0, END)
+                self.to_sec.delete(0, END)
+                self.to_hr.insert(INSERT, '0')
+                self.to_min.insert(INSERT, '0')
+                self.to_sec.insert(INSERT, '0')
+                self.to_am_pm.set('')
+
+                messagebox.showinfo('Success', 'Schedule Set.')
+            except:
+                messagebox.showerror(
+                    'Failed', 'Could Not Set Schedule.', icon='error')
+        else:
+            messagebox.showwarning(
+                'Warning', "You have to Select either 'AM' or 'PM'", icon='warning')
 
     def validate_hr(self, input):
         """Validate if the correct type of input is given to the hours entry. For 24 hour format.
@@ -666,30 +666,6 @@ class App(object):
             else:
                 return False
 
-    def schedule_alarm(self):
-        """
-        Checks if the database has schedules and if the alarm GUI is already running or not.
-        If database has a schedule and alarm GUI is not currently running, then starts the process
-        of running the alarm. Otherwise checks again in 5 seconds.
-
-        """
-        self.check_disturb_mode()
-        # Checking for schedules in database
-        result = cur.execute('SELECT time, message from alarm_info').fetchone()
-        if result:
-            global _ALARM_GUI_RUNNING, _DISABLED_ALARM
-            # Splitting the time into hours, minutes and seconds
-            time = result[0].split(':')
-            scheduled_time = datetime.now(
-            ) + timedelta(hours=int(time[0]), minutes=int(time[1]), seconds=int(time[2]))  # The time when the alarm should ring
-
-            if not _ALARM_GUI_RUNNING and not _DISABLED_ALARM and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
-                self.validate_alarm(scheduled_time, result[1])
-                return
-
-        # Scheduling a recheck after 5 seconds
-        self.root.after(1000, self.schedule_alarm)
-
     def check_disturb_mode(self):
         """
         Checks if do not disturb should be turned on based on scheduled time.
@@ -730,8 +706,35 @@ class App(object):
         else:
             self.do_not_disturb = False
 
+    def schedule_alarm(self):
+        """
+        Checks if the database has schedules and if the alarm GUI is already running or not.
+        If database has a schedule and alarm GUI is not currently running, then starts the process
+        of running the alarm. Otherwise checks again in 5 seconds.
+
+        """
+        # Checking if "Do Not Disturb" mode is on or not
+        self.check_disturb_mode()
+
+        # Checking for schedules in database
+        result = cur.execute('SELECT time, message from alarm_info').fetchone()
+        if result:
+            global _ALARM_GUI_RUNNING, _DISABLED_ALARM
+
+            # Splitting the time into hours, minutes and seconds
+            time = result[0].split(':')
+            scheduled_time = datetime.now(
+            ) + timedelta(hours=int(time[0]), minutes=int(time[1]), seconds=int(time[2]))  # The time when the alarm should ring
+
+            if not _ALARM_GUI_RUNNING and not _DISABLED_ALARM and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
+                self.validate_alarm(scheduled_time, result[1])
+                return
+
+        # Scheduling a recheck after 5 seconds
+        self.root.after(1000, self.schedule_alarm)
+
     def validate_alarm(self, scheduled_time, message):
-        """Checks if it is time to ring the alarm. Checks every 1 second. Also handles the reset event.
+        """Checks if it is time to ring the alarm. Checks every 1 second. Also handles the reset event and "Do Not Disturb" schedules
 
         Args:
             scheduled_time (datetime.datetime): The list that contains the hours, minutes and seconds of the schedule
@@ -741,8 +744,11 @@ class App(object):
             self.sound_alarm(message)
             self.schedule_alarm()
             return
-        elif not self.reset_handled or self.usr_do_not_disturb.get() or self.do_not_disturb:
+        elif not self.reset_handled:
             self.reset_handled = True
+            self.schedule_alarm()
+            return
+        elif self.usr_do_not_disturb.get() or self.do_not_disturb:
             self.schedule_alarm()
             return
 
