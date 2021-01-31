@@ -26,7 +26,6 @@ class App(object):
         style.theme_use('dark')
 
         # Boolean Flags #
-        self.reset_handled = True
         self.update_GUI_running = False
 
         # Validation #
@@ -364,7 +363,8 @@ class App(object):
 
             # Checks and updates the correct listbox.
             if table_name == 'alarm_info':
-                self.reset_handled = False
+                global _ALARM_GUI_RUNNING
+                _ALARM_GUI_RUNNING.pop(int(id_), None)
                 self.update_time_schedules()
 
             else:
@@ -405,7 +405,7 @@ class App(object):
         Deletes the selected listbox item from the database.
 
         """
-        # Check if a scheduler time was selected
+        # Checks if a scheduler time was selected
         if self.time_listbox.curselection():
             answer = messagebox.askyesno(
                 'Delete', 'Are you sure?', icon='info')
@@ -419,13 +419,18 @@ class App(object):
                     cur.execute(query)
                     con.commit()
 
-                    self.reset_handled = False
                     self.time_listbox.delete(selected)
+
+                    global _ALARM_GUI_RUNNING, _DISABLED_ALARM
+                    _ALARM_GUI_RUNNING.pop(int(selected_id), None)
+                    _DISABLED_ALARM.pop(int(selected_id), None)
+                    self.validating_schedule.pop(int(selected_id), None)
+
                 except:
                     messagebox.showerror(
                         'Failed.', 'Could Not Delete from Database.\nContact Developer.', icon='error')
 
-        # Check if a 'Do Not Disturb' time was selected
+        # Checks if a 'Do Not Disturb' time was selected
         elif self.disturb_listbox.curselection():
             # First stores the id of the schedule
             selected = self.disturb_listbox.curselection()[0]
@@ -721,7 +726,6 @@ class App(object):
         results = cur.execute('SELECT * from alarm_info').fetchall()
         if results:
             global _ALARM_GUI_RUNNING, _DISABLED_ALARM
-
             return_flag = False
             for result in results:
                 # Unpacking the data
@@ -762,7 +766,8 @@ class App(object):
         # Unpacking the data
         scheduled_time, id_, message = data
 
-        if datetime.now() >= scheduled_time and not _ALARM_GUI_RUNNING[id_] and not _DISABLED_ALARM[id_] and self.reset_handled and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
+        global _ALARM_GUI_RUNNING, _DISABLED_ALARM
+        if datetime.now() >= scheduled_time and not _ALARM_GUI_RUNNING.get(id_, True) and not _DISABLED_ALARM[id_] and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
             # Starts the alarm when the time is right
             id_message = (id_, message)
             self.sound_alarm(id_message)
@@ -771,14 +776,7 @@ class App(object):
             self.schedule_alarm()
             return
 
-        elif not self.reset_handled:
-            self.reset_handled = True
-            # Telling that this schedule is no longer in the validate_alarm function loop
-            self.validating_schedule[id_] = False
-            self.schedule_alarm()
-            return
-
-        elif self.usr_do_not_disturb.get() or self.do_not_disturb or _ALARM_GUI_RUNNING[id_] or _DISABLED_ALARM[id_]:
+        elif self.usr_do_not_disturb.get() or self.do_not_disturb or _ALARM_GUI_RUNNING.get(id_, True) or _DISABLED_ALARM[id_]:
             # Telling that this schedule is no longer in the validate_alarm function loop
             self.validating_schedule[id_] = False
             self.schedule_alarm()
@@ -794,8 +792,9 @@ class App(object):
             message (str): The message to be shown when alarm rings
         """
         global _ALARM_GUI_RUNNING
+        if _ALARM_GUI_RUNNING.get(id_message[0], -1) != -1:
+            _ALARM_GUI_RUNNING[id_message[0]] = True
 
-        _ALARM_GUI_RUNNING[id_message[0]] = True
         alarm = Alarm(id_message)
 
 
