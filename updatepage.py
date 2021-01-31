@@ -205,7 +205,7 @@ class UpdateTimeGUI(Toplevel):
             return
 
         time = f'{int(self.ent_hour.get())}:{int(self.ent_min.get())}:{int(self.ent_sec.get())}'
-        message = self.message_area.get(0.0, 'end-1c')
+        message = self.message_area.get(0.0, 'end-1c').strip()
 
         self.higher_level.update_database(
             'alarm_info', self.id_, time=time, message=message)

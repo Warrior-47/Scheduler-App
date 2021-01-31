@@ -33,6 +33,7 @@ class App(object):
         validateHr = self.root.register(self.validate_hr)
         validateHr12hrf = self.root.register(self.validate_hr_12hrf)
         validateMS = self.root.register(self.validate_min_sec)
+        self.validating_schedule = {}
 
         # Tabs #
         self.tabs = ttk.Notebook(self.root)
@@ -524,7 +525,7 @@ class App(object):
         time = f'{int(self.ent_hour.get())}:{int(self.ent_min.get())}:{int(self.ent_sec.get())}'
 
         # Storing the message
-        message = self.message_area.get(0.0, 'end-1c')
+        message = self.message_area.get(0.0, 'end-1c').strip()
 
         # Query to insert info in the database
         query = f"INSERT INTO alarm_info(time, message) VALUES('{time}', '{message}');"
@@ -721,8 +722,20 @@ class App(object):
         if results:
             global _ALARM_GUI_RUNNING, _DISABLED_ALARM
 
+            return_flag = False
             for result in results:
+                # Unpacking the data
                 id_, time_data, message = result
+
+                if _ALARM_GUI_RUNNING.get(id_, -1) == -1:
+                    # Initializes dictionaries if key does not exist
+                    _ALARM_GUI_RUNNING[id_] = False
+                    _DISABLED_ALARM[id_] = False
+                    self.validating_schedule[id_] = False
+
+                if self.validating_schedule[id_]:
+                    # If schedule is already in the validate_alarm function loop, does not allow another loop
+                    continue
 
                 time = time_data.split(':')
 
@@ -730,16 +743,13 @@ class App(object):
                 ) + timedelta(hours=int(time[0]), minutes=int(time[1]), seconds=int(time[2]))  # The time when the alarm should ring
 
                 data_tuple = (scheduled_time, id_, message)
-
-                if _ALARM_GUI_RUNNING.get(id_, -1) == -1:
-                    _ALARM_GUI_RUNNING[id_] = False
-                    _DISABLED_ALARM[id_] = False
-
                 if not _ALARM_GUI_RUNNING[id_] and not _DISABLED_ALARM[id_] and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
-                    print('dhuksi')
+                    return_flag = True
+                    self.validating_schedule[id_] = True
                     self.validate_alarm(data_tuple)
-                    print('gelam')
-            return
+
+            if return_flag:
+                return
         # Scheduling a recheck after 5 seconds
         self.root.after(1000, self.schedule_alarm)
 
@@ -747,21 +757,30 @@ class App(object):
         """Checks if it is time to ring the alarm. Checks every 1 second. Also handles the reset event and "Do Not Disturb" schedules
 
         Args:
-            scheduled_time (datetime.datetime): The list that contains the hours, minutes and seconds of the schedule
-            message (str): The message to be shown when alarm rings
+            data (tuple): The tuple that contains the scheduled time datetime object, its id and message
         """
-        scheduled_time, *id_message = data
-        id_message = tuple(id_message)
+        # Unpacking the data
+        scheduled_time, id_, message = data
 
-        if datetime.now() >= scheduled_time and self.reset_handled and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
+        if datetime.now() >= scheduled_time and not _ALARM_GUI_RUNNING[id_] and not _DISABLED_ALARM[id_] and self.reset_handled and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
+            # Starts the alarm when the time is right
+            id_message = (id_, message)
             self.sound_alarm(id_message)
+            # Telling that this schedule is no longer in the validate_alarm function loop
+            self.validating_schedule[id_] = False
             self.schedule_alarm()
             return
+
         elif not self.reset_handled:
             self.reset_handled = True
+            # Telling that this schedule is no longer in the validate_alarm function loop
+            self.validating_schedule[id_] = False
             self.schedule_alarm()
             return
-        elif self.usr_do_not_disturb.get() or self.do_not_disturb:
+
+        elif self.usr_do_not_disturb.get() or self.do_not_disturb or _ALARM_GUI_RUNNING[id_] or _DISABLED_ALARM[id_]:
+            # Telling that this schedule is no longer in the validate_alarm function loop
+            self.validating_schedule[id_] = False
             self.schedule_alarm()
             return
 
@@ -823,6 +842,7 @@ class Alarm(Toplevel):
         global _ALARM_GUI_RUNNING, _DISABLED_ALARM
         _ALARM_GUI_RUNNING[self.id_] = False
         _DISABLED_ALARM[self.id_] = True
+
         ws.PlaySound(None, ws.SND_PURGE)
         self.destroy()
 
