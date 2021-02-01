@@ -3,16 +3,35 @@ from tkinter import ttk
 from tkinter import *
 
 from datetime import datetime, timedelta
+from os import path
 
-import sqlite3
-import updatepage
 import winsound as ws
+import updatepage
+import sqlite3
 
-con = sqlite3.connect('database.db')
-cur = con.cursor()
+if path.exists('database.db'):
+    con = sqlite3.connect('database.db')
+    cur = con.cursor()
+else:
+    con = sqlite3.connect('database.db')
+    cur = con.cursor()
+
+    query = 'CREATE TABLE alarm_info (\
+    id INTEGER PRIMARY KEY AUTOINCREMENT,\
+    time Text,\
+    message Text);'
+
+    cur.execute(query)
+
+    query = 'CREATE TABLE do_not_disturb (\
+        id INTEGER PRIMARY KEY AUTOINCREMENT,\
+        from_time Text,\
+        to_time Text);'
+
+    cur.execute(query)
+    con.commit()
 
 _ALARM_GUI_RUNNING = {}
-_DISABLED_ALARM = {}
 
 
 class App(object):
@@ -33,6 +52,7 @@ class App(object):
         validateHr12hrf = self.root.register(self.validate_hr_12hrf)
         validateMS = self.root.register(self.validate_min_sec)
         self.validating_schedule = {}
+        self._disabled_alarm = {}
 
         # Tabs #
         self.tabs = ttk.Notebook(self.root)
@@ -142,11 +162,7 @@ class App(object):
         # Buttons #
         self.save_btn = Button(
             self.schedule_time_tab, text='Save', font=('Modern', 15, 'bold'), bg='#414141', relief=FLAT, fg='white', width=13, command=self.save)
-        self.save_btn.pack(padx=(61, 0), pady=(20, 0), side='left')
-
-        self.restart_alarm_btn = Button(
-            self.schedule_time_tab, text='Restart Alarm', font=('Modern', 15, 'bold'), bg='#414141', relief=FLAT, fg='white', width=13, command=self.restart)
-        self.restart_alarm_btn.pack(padx=(0, 67), pady=(20, 0), side='right')
+        self.save_btn.pack(pady=(30, 0))
 
         #
         # Do Not Disturb Frame #
@@ -306,6 +322,11 @@ class App(object):
         self.update_time_schedules()
         self.update_disturb_schedules()
 
+        self.time_listbox.bind(
+            '<<ListboxSelect>>', self.change_state_btn_text)
+        self.disturb_listbox.bind(
+            '<<ListboxSelect>>', self.change_state_btn_text)
+
         self.time_listbox.grid(row=1, column=0, padx=(15, 0), pady=(0, 10))
         self.disturb_listbox.grid(row=3, column=0, padx=(15, 0), pady=(0, 10))
 
@@ -329,6 +350,10 @@ class App(object):
         self.delete_any_schedule_btn = Button(self.schedules_frame, text='Delete', font=('Modern', 14, 'bold'),
                                               bg='#414141', relief=FLAT, fg='white', width=13, command=self.delete_schedule)
         self.delete_any_schedule_btn.grid(row=4, column=0, sticky=E)
+
+        self.change_schedule_state_btn = Button(self.schedules_frame, text='Disable', font=('Modern', 14, 'bold'),
+                                                bg='#414141', relief=FLAT, fg='white', width=13, command=self.change_schedule_state)
+        self.change_schedule_state_btn.grid(row=4, column=0, padx=(20, 0))
 
         #
         # Starting Alarm Timer #
@@ -421,9 +446,9 @@ class App(object):
 
                     self.time_listbox.delete(selected)
 
-                    global _ALARM_GUI_RUNNING, _DISABLED_ALARM
+                    global _ALARM_GUI_RUNNING
                     _ALARM_GUI_RUNNING.pop(int(selected_id), None)
-                    _DISABLED_ALARM.pop(int(selected_id), None)
+                    self._disabled_alarm.pop(int(selected_id), None)
                     self.validating_schedule.pop(int(selected_id), None)
 
                 except:
@@ -502,18 +527,56 @@ class App(object):
         if event.widget.get() == '':
             event.widget.insert(INSERT, 0)
 
-    def restart(self):
+    def change_schedule_state(self):
         """
-        Restarts the alarm if it is diasbled.
+        Reverts the state of the selected schedule depending on the 
+        previous state.
 
         """
-        global _DISABLED_ALARM
-        if _DISABLED_ALARM:
-            _DISABLED_ALARM = False
-            messagebox.showinfo('Restart', 'Alarm Restarted')
+        if self.time_listbox.curselection():
+            selected = self.time_listbox.curselection()[0]
+            selected_id = int(self.time_listbox.get(selected).split('|')[0])
 
-        else:
-            messagebox.showinfo('Restart', 'Already Running')
+            if self.change_schedule_state_btn['text'] == 'Disable':
+                # Disabling the schedule so that it does not run until re-enabled
+                self._disabled_alarm[selected_id] = True
+
+                # Changing the color of the listbox item to signify its state
+                self.time_listbox.itemconfig(selected, fg='#181818')
+                self.time_listbox.itemconfig(
+                    selected, selectforeground='#414141')
+                self.change_schedule_state_btn['text'] = 'Enable'
+            else:
+                # Re-enabling the schedule
+                self._disabled_alarm[selected_id] = False
+                self.time_listbox.itemconfig(selected, fg='white')
+                self.time_listbox.itemconfig(
+                    selected, selectforeground='white')
+                self.change_schedule_state_btn['text'] = 'Disable'
+
+        elif self.disturb_listbox.curselection():
+            pass
+
+    def change_state_btn_text(self, event):
+        """Changes the text of the change_schedule_state_btn button to 
+        "Enable" or "Disable" depending on the state of the selected schedule
+
+        Args:
+            event ([Tkinter.Event]): Contains information of the ListboxSelect event
+        """
+        # Making sure the event is not called for focusing on an empty listbox
+        if event.widget.curselection():
+            if event.widget.winfo_name() == '!listbox':
+                selected = self.time_listbox.curselection()[0]
+                selected_id = int(
+                    self.time_listbox.get(selected).split('|')[0])
+                if self._disabled_alarm[selected_id]:
+                    self.change_schedule_state_btn['text'] = 'Enable'
+                else:
+                    self.change_schedule_state_btn['text'] = 'Disable'
+
+            elif event.widget.winfo_name() == '!listbox2':
+                pass
 
     def save(self):
         """
@@ -526,8 +589,13 @@ class App(object):
                 'Warning', 'Scheduled time Cannot be All Zero.', icon='warning')
             return
 
+        # For the rare chance of getting an empty string
+        hr = int(self.ent_hour.get()) if self.ent_hour.get() != '' else 0
+        min_ = int(self.ent_min.get()) if self.ent_min.get() != '' else 0
+        sec = int(self.ent_sec.get()) if self.ent_sec.get() != '' else 0
+
         # Storing the time from the entries
-        time = f'{int(self.ent_hour.get())}:{int(self.ent_min.get())}:{int(self.ent_sec.get())}'
+        time = f'{hr}:{min_}:{sec}'
 
         # Storing the message
         message = self.message_area.get(0.0, 'end-1c').strip()
@@ -553,6 +621,7 @@ class App(object):
             self.message_area.delete(0.0, 'end-1c')
 
             messagebox.showinfo('Success', 'Schedule Set.')
+            self.schedule_alarm()
         except:
             messagebox.showerror(
                 'Warning', 'Could not Save to Database.', icon='warning')
@@ -564,10 +633,22 @@ class App(object):
         """
         # Taking values from the entries
         if self.from_am_pm.get() and self.to_am_pm.get():
-            f_hr = int(self.from_hr.get()) if self.from_hr.get() != '0' else 12
-            t_hr = int(self.to_hr.get()) if self.to_hr.get() != '0' else 12
-            from_time = f'{f_hr}:{int(self.from_min.get())}:{int(self.from_sec.get())} {self.from_am_pm.get()}'
-            to_time = f'{t_hr}:{int(self.to_min.get())}:{int(self.to_sec.get())} {self.to_am_pm.get()}'
+            f_hr = int(self.from_hr.get()) if self.from_hr.get(
+            ) != '0' and self.from_hr.get() != '' else 12
+            t_hr = int(self.to_hr.get()) if self.to_hr.get(
+            ) != '0' and self.to_hr.get() != '' else 12
+
+            # For the rare chance of getting an empty string
+            f_min = int(self.from_min.get()
+                        ) if self.from_min.get() != '' else 0
+            t_min = int(self.to_min.get()) if self.to_min.get() != '' else 0
+
+            f_sec = int(self.from_sec.get()
+                        ) if self.from_sec.get() != '' else 0
+            t_sec = int(self.to_sec.get()) if self.to_sec.get() != '' else 0
+
+            from_time = f'{f_hr}:{f_min}:{f_sec} {self.from_am_pm.get()}'
+            to_time = f'{t_hr}:{t_min}:{t_sec} {self.to_am_pm.get()}'
 
             query = f"INSERT INTO do_not_disturb(from_time, to_time) VALUES('{from_time}', '{to_time}')"
             try:
@@ -615,7 +696,7 @@ class App(object):
         try:
             # Checks if the current string in the entry is less than 24 and does not contain space
             int(input)
-            if int(input) < 24 and input[-1] != ' ':
+            if int(input) < 24 and input[-1] != ' ' and input[0] != ' ':
                 return True
             else:
                 return False
@@ -638,7 +719,7 @@ class App(object):
         try:
             # Checks if the current string in the entry is less than 13 and does not contain space
             int(input)
-            if int(input) < 13 and input[-1] != ' ':
+            if int(input) < 13 and input[-1] != ' ' and input[0] != ' ':
                 return True
             else:
                 return False
@@ -661,7 +742,7 @@ class App(object):
         try:
             # Checks if the current string in the entry is less than 60 and does not contain space
             int(input)
-            if int(input) <= 60 and input[-1] != ' ':
+            if int(input) <= 60 and input[-1] != ' ' and input[0] != ' ':
                 return True
             else:
                 return False
@@ -725,7 +806,7 @@ class App(object):
         # Checking for schedules in database
         results = cur.execute('SELECT * from alarm_info').fetchall()
         if results:
-            global _ALARM_GUI_RUNNING, _DISABLED_ALARM
+            global _ALARM_GUI_RUNNING
             return_flag = False
             for result in results:
                 # Unpacking the data
@@ -734,7 +815,7 @@ class App(object):
                 if _ALARM_GUI_RUNNING.get(id_, -1) == -1:
                     # Initializes dictionaries if key does not exist
                     _ALARM_GUI_RUNNING[id_] = False
-                    _DISABLED_ALARM[id_] = False
+                    self._disabled_alarm[id_] = False
                     self.validating_schedule[id_] = False
 
                 if self.validating_schedule[id_]:
@@ -747,7 +828,7 @@ class App(object):
                 ) + timedelta(hours=int(time[0]), minutes=int(time[1]), seconds=int(time[2]))  # The time when the alarm should ring
 
                 data_tuple = (scheduled_time, id_, message)
-                if not _ALARM_GUI_RUNNING[id_] and not _DISABLED_ALARM[id_] and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
+                if not _ALARM_GUI_RUNNING[id_] and not self._disabled_alarm[id_] and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
                     return_flag = True
                     self.validating_schedule[id_] = True
                     self.validate_alarm(data_tuple)
@@ -766,17 +847,18 @@ class App(object):
         # Unpacking the data
         scheduled_time, id_, message = data
 
-        global _ALARM_GUI_RUNNING, _DISABLED_ALARM
-        if datetime.now() >= scheduled_time and not _ALARM_GUI_RUNNING.get(id_, True) and not _DISABLED_ALARM[id_] and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
+        global _ALARM_GUI_RUNNING
+        if datetime.now() >= scheduled_time and not _ALARM_GUI_RUNNING.get(id_, True) and not self._disabled_alarm[id_] and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
             # Starts the alarm when the time is right
             id_message = (id_, message)
             self.sound_alarm(id_message)
+
             # Telling that this schedule is no longer in the validate_alarm function loop
             self.validating_schedule[id_] = False
             self.schedule_alarm()
             return
 
-        elif self.usr_do_not_disturb.get() or self.do_not_disturb or _ALARM_GUI_RUNNING.get(id_, True) or _DISABLED_ALARM[id_]:
+        elif self.usr_do_not_disturb.get() or self.do_not_disturb or _ALARM_GUI_RUNNING.get(id_, True) or self._disabled_alarm[id_]:
             # Telling that this schedule is no longer in the validate_alarm function loop
             self.validating_schedule[id_] = False
             self.schedule_alarm()
@@ -810,7 +892,7 @@ class Alarm(Toplevel):
         self.geometry('400x200+500+150')
         self.resizable(False, False)
         self.iconbitmap('Images/icon.ico')
-        self.protocol('WM_DELETE_WINDOW', self.quit)
+        self.protocol('WM_DELETE_WINDOW', self.kill)
 
         self.id_, message = id_message
         # Label
@@ -820,30 +902,14 @@ class Alarm(Toplevel):
         message_label['background'] = '#181818'
         message_label['foreground'] = 'white'
 
-        # Buttons
+        # Button
         stop_btn = Button(self, text='Stop!', font=('Modern', 14, 'bold'),
-                          bg='#414141', relief=FLAT, fg='white', width=10, command=self.kill)
-        stop_btn.pack(padx=20, pady=(20, 0), side='left')
-
-        quit_btn = Button(self, text='Quit', font=('Modern', 14, 'bold'),
-                          bg='#414141', relief=FLAT, fg='white', width=10, command=self.quit)
-        quit_btn.pack(padx=20, pady=(20, 0), side='right')
+                          bg='#414141', relief=FLAT, fg='white', width=15, command=self.kill)
+        stop_btn.pack(pady=(40, 0))
 
         # Plays the alarm sound
         ws.PlaySound('tones/soft_sound.wav', ws.SND_LOOP+ws.SND_ASYNC)
         self.lift()
-
-    def quit(self):
-        """
-        Stops the alarm from repeating until the alarm is restarted
-
-        """
-        global _ALARM_GUI_RUNNING, _DISABLED_ALARM
-        _ALARM_GUI_RUNNING[self.id_] = False
-        _DISABLED_ALARM[self.id_] = True
-
-        ws.PlaySound(None, ws.SND_PURGE)
-        self.destroy()
 
     def kill(self):
         """
@@ -937,9 +1003,7 @@ def main():
     root.geometry('572x480+1200+250')
     root.resizable(False, False)
     root.iconbitmap('Images/icon.ico')
-
     app = App(root)
-
     root.mainloop()
 
 
