@@ -356,6 +356,9 @@ class App(object):
                                                 bg='#414141', relief=FLAT, fg='white', width=13, command=self.change_schedule_state)
         self.change_schedule_state_btn.grid(row=4, column=0, padx=(20, 0))
 
+        # Minimizing Window
+        self.root.iconify()
+
         #
         # Starting Alarm Timer #
         self.schedule_alarm()
