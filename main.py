@@ -53,6 +53,7 @@ class App(object):
         validateMS = self.root.register(self.validate_min_sec)
         self.validating_schedule = {}
         self._disabled_alarm = {}
+        self.disturb_disabled = {}
 
         # Tabs #
         self.tabs = ttk.Notebook(self.root)
@@ -467,9 +468,11 @@ class App(object):
                 con.commit()
 
                 self.disturb_listbox.delete(selected)
+
+                self.disturb_disabled.pop(int(selected_id), None)
             except:
                 messagebox.showerror(
-                    'Failed', 'Could Not Delete from Database./nContact Developer.', icon='error')
+                    'Failed', 'Could Not Delete from Database.\nContact Developer.', icon='error')
 
     def update_time_schedules(self):
         """
@@ -546,6 +549,7 @@ class App(object):
                 self.time_listbox.itemconfig(
                     selected, selectforeground='#414141')
                 self.change_schedule_state_btn['text'] = 'Enable'
+
             else:
                 # Re-enabling the schedule
                 self._disabled_alarm[selected_id] = False
@@ -555,7 +559,26 @@ class App(object):
                 self.change_schedule_state_btn['text'] = 'Disable'
 
         elif self.disturb_listbox.curselection():
-            pass
+            selected = self.disturb_listbox.curselection()[0]
+            selected_id = int(self.disturb_listbox.get(selected).split('|')[0])
+
+            if self.change_schedule_state_btn['text'] == 'Disable':
+                # Disabling the schedule so that it does not run until re-enabled
+                self.disturb_disabled[selected_id] = True
+
+                # Changing the color of the listbox item to signify its state
+                self.disturb_listbox.itemconfig(selected, fg='#181818')
+                self.disturb_listbox.itemconfig(
+                    selected, selectforeground='#414141')
+                self.change_schedule_state_btn['text'] = 'Enable'
+
+            else:
+                # Re-enabling the schedule
+                self.disturb_disabled[selected_id] = False
+                self.disturb_listbox.itemconfig(selected, fg='white')
+                self.disturb_listbox.itemconfig(
+                    selected, selectforeground='white')
+                self.change_schedule_state_btn['text'] = 'Disable'
 
     def change_state_btn_text(self, event):
         """Changes the text of the change_schedule_state_btn button to 
@@ -570,13 +593,21 @@ class App(object):
                 selected = self.time_listbox.curselection()[0]
                 selected_id = int(
                     self.time_listbox.get(selected).split('|')[0])
+
                 if self._disabled_alarm[selected_id]:
                     self.change_schedule_state_btn['text'] = 'Enable'
                 else:
                     self.change_schedule_state_btn['text'] = 'Disable'
 
             elif event.widget.winfo_name() == '!listbox2':
-                pass
+                selected = self.disturb_listbox.curselection()[0]
+                selected_id = int(
+                    self.disturb_listbox.get(selected).split('|')[0])
+
+                if self.disturb_disabled[selected_id]:
+                    self.change_schedule_state_btn['text'] = 'Enable'
+                else:
+                    self.change_schedule_state_btn['text'] = 'Disable'
 
     def save(self):
         """
@@ -759,37 +790,43 @@ class App(object):
 
         """
         now = datetime.now()
+        if datetime.strftime(now, '%p') == 'PM':
+            self.saved_date = now
+        else:
+            self.saved_date = now - timedelta(days=1)
 
-        result = cur.execute(
-            'SELECT from_time, to_time FROM do_not_disturb').fetchone()
-        if result:
-            if (result[0][-2:]+result[1][-2:]) != 'PMAM':
-                # For "Do Not Disturb" schedules that start and end the same day
-                time_format = '%I:%M:%S %p'
-                from_time = datetime.strptime(result[0], time_format).time()
-                to_time = datetime.strptime(result[1], time_format).time()
-                now = now.time()
+        results = cur.execute(
+            'SELECT * FROM do_not_disturb').fetchall()
+        if results:
+            self.do_not_disturb = False
+            for result in results:
+                if self.disturb_disabled.get(result[0], -1) == -1:
+                    self.disturb_disabled[result[0]] = False
 
-                if now >= from_time and now < to_time:
-                    self.do_not_disturb = True
-                else:
-                    self.do_not_disturb = False
-            else:
-                # For "Do Not Disturb" schedules that start and end on different days
-                if not self.do_not_disturb:
-                    self.saved_date = now
+                if not self.disturb_disabled[result[0]]:
+                    if (result[1][-2:]+result[2][-2:]) != 'PMAM':
+                        # For "Do Not Disturb" schedules that start and end the same day
+                        time_format = '%I:%M:%S %p'
+                        from_time = datetime.strptime(
+                            result[1], time_format).time()
+                        to_time = datetime.strptime(
+                            result[2], time_format).time()
+                        nowtime = now.time()
 
-                time_format = '%Y-%m-%d %I:%M:%S %p'
-                from_time = datetime.strptime(
-                    str(self.saved_date.date())+" "+result[0], time_format)
-                to_time = datetime.strptime(
-                    str((self.saved_date+timedelta(days=1)).date())+" "+result[1], time_format)
+                        if nowtime >= from_time and nowtime < to_time:
+                            self.do_not_disturb = True
+                            break
+                    else:
+                        # For "Do Not Disturb" schedules that start and end on different day
+                        time_format = '%Y-%m-%d %I:%M:%S %p'
+                        from_time = datetime.strptime(
+                            str(self.saved_date.date())+" "+result[1], time_format)
+                        to_time = datetime.strptime(
+                            str((self.saved_date+timedelta(days=1)).date())+" "+result[2], time_format)
 
-                if now >= from_time and now < to_time:
-                    self.do_not_disturb = True
-                else:
-                    self.do_not_disturb = False
-
+                        if now >= from_time and now < to_time:
+                            self.do_not_disturb = True
+                            break
         else:
             self.do_not_disturb = False
 
@@ -827,11 +864,10 @@ class App(object):
                 scheduled_time = datetime.now(
                 ) + timedelta(hours=int(time[0]), minutes=int(time[1]), seconds=int(time[2]))  # The time when the alarm should ring
 
-                data_tuple = (scheduled_time, id_, message)
                 if not _ALARM_GUI_RUNNING[id_] and not self._disabled_alarm[id_] and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
                     return_flag = True
                     self.validating_schedule[id_] = True
-                    self.validate_alarm(data_tuple)
+                    self.validate_alarm((scheduled_time, id_, message))
 
             if return_flag:
                 return
@@ -844,14 +880,16 @@ class App(object):
         Args:
             data (tuple): The tuple that contains the scheduled time datetime object, its id and message
         """
+        # Checking if "Do Not Disturb" mode is on or not
+        self.check_disturb_mode()
+
         # Unpacking the data
         scheduled_time, id_, message = data
 
         global _ALARM_GUI_RUNNING
         if datetime.now() >= scheduled_time and not _ALARM_GUI_RUNNING.get(id_, True) and not self._disabled_alarm[id_] and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
             # Starts the alarm when the time is right
-            id_message = (id_, message)
-            self.sound_alarm(id_message)
+            self.sound_alarm((id_, message))
 
             # Telling that this schedule is no longer in the validate_alarm function loop
             self.validating_schedule[id_] = False
