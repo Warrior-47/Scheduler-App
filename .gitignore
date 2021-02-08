@@ -17,7 +17,7 @@ z.py
 .Python
 build/
 develop-eggs/
-dist/
+dist/*
 downloads/
 eggs/
 .eggs/
@@ -130,3 +130,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+!dist/Scheduler V*.rar
+!dist/Scheduler V*.zip
