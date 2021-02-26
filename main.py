@@ -51,6 +51,7 @@ class App(object):
         validateHr = self.root.register(self.validate_hr)
         validateHr12hrf = self.root.register(self.validate_hr_12hrf)
         validateMS = self.root.register(self.validate_min_sec)
+        validateInterval = self.root.register(self.validate_interval)
         self.validating_schedule = {}
         self._disabled_alarm = {}
         self.disturb_disabled = {}
@@ -96,7 +97,7 @@ class App(object):
             self.time_frame, font=('Modern', 20, 'bold'), insertbackground='white',
             fg='white', bg='#414141', width=4, justify='center', validate='key',
             validatecommand=(validateHr, '%P'), relief=RIDGE, bd=4)
-        self.ent_hour.place(x=80, y=85)
+        self.ent_hour.place(x=70, y=85)
         self.ent_hour.insert(INSERT, '0')
         self.ent_hour.bind('<FocusOut>', self.entry_focus_out_handler)
 
@@ -104,7 +105,7 @@ class App(object):
             self.time_frame, font=('Modern', 20, 'bold'), insertbackground='white',
             fg='white', bg='#414141', width=4, justify='center', validate='key',
             validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
-        self.ent_min.place(x=250, y=85)
+        self.ent_min.place(x=200, y=85)
         self.ent_min.insert(INSERT, '0')
         self.ent_min.bind('<FocusOut>', self.entry_focus_out_handler)
 
@@ -112,32 +113,49 @@ class App(object):
             self.time_frame, font=('Modern', 20, 'bold'), insertbackground='white',
             fg='white', bg='#414141', width=4, justify='center', validate='key',
             validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
-        self.ent_sec.place(x=420, y=85)
+        self.ent_sec.place(x=330, y=85)
         self.ent_sec.insert(INSERT, '0')
         self.ent_sec.bind('<FocusOut>', self.entry_focus_out_handler)
 
         # Entry Labels
         self.hour_lbl = Label(
             self.time_frame, text='Hours', fg='white', font='Modern 20 bold', bg='#181818')
-        self.hour_lbl.place(x=82, y=135)
+        self.hour_lbl.place(x=72, y=135)
 
         self.min_lbl = Label(
             self.time_frame, text='Minutes', fg='white', font='Modern 20 bold', bg='#181818')
-        self.min_lbl.place(x=242, y=135)
+        self.min_lbl.place(x=192, y=135)
 
         self.sec_lbl = Label(
             self.time_frame, text='Seconds', fg='white', font='Modern 20 bold', bg='#181818')
-        self.sec_lbl.place(x=410, y=135)
+        self.sec_lbl.place(x=318, y=135)
 
         # Colons
         self.colon = PhotoImage(file='Images/colon.png')
         self.colon_lbl1 = Label(
             self.time_frame, image=self.colon, bg='#181818')
-        self.colon_lbl1.place(x=180, y=88)
+        self.colon_lbl1.place(x=148, y=88)
 
         self.colon_lbl2 = Label(
             self.time_frame, image=self.colon, bg='#181818')
-        self.colon_lbl2.place(x=350, y=88)
+        self.colon_lbl2.place(x=278, y=88)
+
+        # Interval
+        self.interval_lbl = Label(
+            self.time_frame, text='Interval', fg='white', font='Modern 20 bold', bg='#181818')
+        self.interval_lbl.place(x=430, y=43)
+
+        self.ent_interval = Entry(
+            self.time_frame, font=('Modern', 20, 'bold'), insertbackground='white',
+            fg='white', bg='#414141', width=4, justify='center', relief=RIDGE, bd=4,
+            validate='key', validatecommand=(validateInterval, '%P'))
+        self.ent_interval.place(x=440, y=85)
+        self.ent_interval.insert(INSERT, '0')
+        self.ent_interval.bind('<FocusOut>', self.entry_focus_out_handler)
+
+        self.interval_unit_lbl = Label(
+            self.time_frame, text='Minutes', fg='white', font='Modern 20 bold', bg='#181818')
+        self.interval_unit_lbl.place(x=430, y=135)
 
         #
         # Message Frame Components #
@@ -310,7 +328,7 @@ class App(object):
         self.disturb_list_lbl = Label(
             self.schedules_frame, text='Do Not Disturb Schedules:', fg='white', font='Modern 15 bold', bg='#181818')
         self.disturb_list_lbl.grid(
-            row=2, column=0, sticky=W, pady=(10, 0), padx=15)
+            row=3, column=0, sticky=W, pady=(10, 0), padx=15)
 
         # Listboxes
         self.time_listbox = Listbox(
@@ -328,33 +346,39 @@ class App(object):
         self.disturb_listbox.bind(
             '<<ListboxSelect>>', self.change_state_btn_text)
 
-        self.time_listbox.grid(row=1, column=0, padx=(15, 0), pady=(0, 10))
-        self.disturb_listbox.grid(row=3, column=0, padx=(15, 0), pady=(0, 10))
+        self.time_listbox.grid(row=1, column=0, padx=(15, 0))
+        self.disturb_listbox.grid(row=4, column=0, padx=(15, 0))
 
         # Scroll Bars
-        time_scroll = ttk.Scrollbar(
+        time_scroll_v = ttk.Scrollbar(
             self.schedules_frame, orient=VERTICAL, command=self.time_listbox.yview)
-        time_scroll.grid(row=1, column=1, pady=(0, 10), sticky=NS)
-        self.time_listbox.config(yscrollcommand=time_scroll.set)
+        time_scroll_v.grid(row=1, column=1, sticky=NS)
+        self.time_listbox.config(yscrollcommand=time_scroll_v.set)
 
-        disturb_scroll = ttk.Scrollbar(
+        time_scroll_h = ttk.Scrollbar(
+            self.schedules_frame, orient=HORIZONTAL, command=self.time_listbox.xview)
+        time_scroll_h.grid(row=2, column=0, padx=(
+            15, 0), pady=(0, 10), sticky=EW)
+        self.time_listbox.config(xscrollcommand=time_scroll_h.set)
+
+        disturb_scroll_v = ttk.Scrollbar(
             self.schedules_frame, orient=VERTICAL, command=self.disturb_listbox.yview)
-        disturb_scroll.grid(row=3, column=1, pady=(0, 10), sticky=NS)
-        self.disturb_listbox.config(yscrollcommand=disturb_scroll.set)
+        disturb_scroll_v.grid(row=4, column=1, sticky=NS)
+        self.disturb_listbox.config(yscrollcommand=disturb_scroll_v.set)
 
         # Buttons
         self.update_any_schedule_btn = Button(self.schedules_frame, text='Update', font=('Modern', 14, 'bold'),
                                               bg='#414141', relief=FLAT, fg='white', width=13, command=self.run_update_GUI)
         self.update_any_schedule_btn.grid(
-            row=4, column=0, sticky=W, padx=20, pady=20)
+            row=5, column=0, sticky=W, padx=20, pady=25)
 
         self.delete_any_schedule_btn = Button(self.schedules_frame, text='Delete', font=('Modern', 14, 'bold'),
                                               bg='#414141', relief=FLAT, fg='white', width=13, command=self.delete_schedule)
-        self.delete_any_schedule_btn.grid(row=4, column=0, sticky=E)
+        self.delete_any_schedule_btn.grid(row=5, column=0, sticky=E)
 
         self.change_schedule_state_btn = Button(self.schedules_frame, text='Disable', font=('Modern', 14, 'bold'),
                                                 bg='#414141', relief=FLAT, fg='white', width=13, command=self.change_schedule_state)
-        self.change_schedule_state_btn.grid(row=4, column=0, padx=(20, 0))
+        self.change_schedule_state_btn.grid(row=5, column=0, padx=(20, 0))
 
         # Minimizing Window
         self.root.iconify()
@@ -419,7 +443,7 @@ class App(object):
             self.update_GUI_running = True
 
             data = self.time_listbox.get(
-                self.time_listbox.curselection()[0]).split('.')
+                self.time_listbox.curselection()[0]).split('Message: ')
             time_update = updatepage.UpdateTimeGUI(self, data)
 
         elif self.disturb_listbox.curselection():
@@ -488,11 +512,11 @@ class App(object):
             self.time_listbox.delete(0, END)
 
             # Parsing the data into a fixed format.
-            ids, times, messages = zip(*res)
+            ids, times, messages, intervals = zip(*res)
 
             separated_time = [[t for t in x.split(':')] for x in times]
-            items = [f'{id_}| Time: {t[0]} Hr(s), {t[1]} Min(s), {t[2]} Sec(s). Message: {message}' for id_, message, t in zip(
-                ids, messages, separated_time)]
+            items = [f'{id_}| Time: {t[0]} Hr(s), {t[1]} Min(s), {t[2]} Sec(s). Interval: {i} Mins. Message: {message}' for id_, message, t, i in zip(
+                ids, messages, separated_time, intervals)]
 
             # Inserting data into the time listbox.
             for i, item in enumerate(items):
@@ -627,6 +651,8 @@ class App(object):
         hr = int(self.ent_hour.get()) if self.ent_hour.get() != '' else 0
         min_ = int(self.ent_min.get()) if self.ent_min.get() != '' else 0
         sec = int(self.ent_sec.get()) if self.ent_sec.get() != '' else 0
+        interval = float(self.ent_interval.get()
+                         ) if self.ent_interval.get() != '' else 0
 
         # Storing the time from the entries
         time = f'{hr}:{min_}:{sec}'
@@ -635,7 +661,7 @@ class App(object):
         message = self.message_area.get(0.0, 'end-1c').strip()
 
         # Query to insert info in the database
-        query = f"INSERT INTO alarm_info(time, message) VALUES('{time}', '{message}');"
+        query = f"INSERT INTO alarm_info(time, message, interval) VALUES('{time}', '{message}', {interval});"
         try:
             # Executing the query
             cur.execute(query)
@@ -648,9 +674,11 @@ class App(object):
             self.ent_hour.delete(0, END)
             self.ent_min.delete(0, END)
             self.ent_sec.delete(0, END)
+            self.ent_interval.delete(0, END)
             self.ent_hour.insert(INSERT, '0')
             self.ent_min.insert(INSERT, '0')
             self.ent_sec.insert(INSERT, '0')
+            self.ent_interval.insert(INSERT, '0')
 
             self.message_area.delete(0.0, 'end-1c')
 
@@ -787,6 +815,25 @@ class App(object):
             else:
                 return False
 
+    def validate_interval(self, input):
+        """Validate if the correct type of input is given to the interval entries
+
+        Args:
+            input (str): The string in the entries typed by the user
+
+        Returns:
+            boolean: True if character typed is currect, False otherwise
+        """
+        # Checks if the current string in the entry is numeric
+        if input == '':
+            return True
+        else:
+            try:
+                float(input)
+                return True
+            except:
+                return False
+
     def check_disturb_mode(self):
         """
         Checks if do not disturb should be turned on based on scheduled time.
@@ -850,7 +897,7 @@ class App(object):
             return_flag = False
             for result in results:
                 # Unpacking the data
-                id_, time_data, message = result
+                id_, time_data, message, interval = result
 
                 if _ALARM_GUI_RUNNING.get(id_, -1) == -1:
                     # Initializes dictionaries if key does not exist
@@ -870,7 +917,8 @@ class App(object):
                 if not _ALARM_GUI_RUNNING[id_] and not self._disabled_alarm[id_] and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
                     return_flag = True
                     self.validating_schedule[id_] = True
-                    self.validate_alarm((scheduled_time, id_, message))
+                    self.validate_alarm(
+                        (scheduled_time, id_, message, interval))
 
             if return_flag:
                 return
@@ -887,12 +935,12 @@ class App(object):
         self.check_disturb_mode()
 
         # Unpacking the data
-        scheduled_time, id_, message = data
+        scheduled_time, id_, message, interval = data
 
         global _ALARM_GUI_RUNNING
         if datetime.now() >= scheduled_time and not _ALARM_GUI_RUNNING.get(id_, True) and not self._disabled_alarm[id_] and not self.usr_do_not_disturb.get() and not self.do_not_disturb:
             # Starts the alarm when the time is right
-            self.sound_alarm((id_, message))
+            self.sound_alarm((id_, message, interval))
 
             # Telling that this schedule is no longer in the validate_alarm function loop
             self.validating_schedule[id_] = False
@@ -935,7 +983,7 @@ class Alarm(Toplevel):
         self.iconbitmap('Images/icon.ico')
         self.protocol('WM_DELETE_WINDOW', self.kill)
 
-        self.id_, message = id_message
+        self.id_, message, self.interval = id_message
         # Label
         message_label = Label(
             self, text=message, font=('Modern', 22, 'bold'))
@@ -957,10 +1005,18 @@ class Alarm(Toplevel):
         Stops the alarm from ringing.
 
         """
+        ws.PlaySound(None, ws.SND_PURGE)
+        self.after(int(self.interval * 60000), self.interval_handling)
+        self.withdraw()
+
+    def interval_handling(self):
+        """
+        Kills the window after the fixed time interval.
+
+        """
         global _ALARM_GUI_RUNNING
         _ALARM_GUI_RUNNING[self.id_] = False
 
-        ws.PlaySound(None, ws.SND_PURGE)
         self.destroy()
 
 
@@ -985,6 +1041,20 @@ def styling():
             "map": {
                 "foreground": [('pressed', '#303030'), ('active', '#414141')],
                 "indicatorcolor": [('selected', '#d90909'), ('pressed', '#414141')]
+            }
+        },
+        "Int.TCheckbutton": {
+            "configure": {
+                "indicatorcolor": '#181818',
+                "foreground": '#d90909',
+                "focuscolor": '#181818',
+                "font": ('Modern', 17, 'bold'),
+                "indicatordiameter": 0,
+                "borderwidth": 0
+            },
+            "map": {
+                "foreground": [('pressed', '#303030'), ('selected', 'green')],
+                "indicatorcolor": [('selected', '#181818'), ('pressed', '#181818')]
             }
         },
         "TRadiobutton": {
@@ -1041,7 +1111,7 @@ def main():
     root = Tk()
     root.config(bg='#181818')
     root.title('Scheduler')
-    root.geometry('572x480+1200+250')
+    root.geometry('572x480+600+250')
     root.resizable(False, False)
     root.iconbitmap('Images/icon.ico')
     app = App(root)

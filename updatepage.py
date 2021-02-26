@@ -75,6 +75,26 @@ def validate_min_sec(input):
             return False
 
 
+def validate_interval(input):
+    """Validate if the correct type of input is given to the interval entries
+
+    Args:
+        input (str): The string in the entries typed by the user
+
+    Returns:
+        boolean: True if character typed is currect, False otherwise
+    """
+    # Checks if the current string in the entry is numeric
+    if input == '':
+        return True
+    else:
+        try:
+            float(input)
+            return True
+        except:
+            return False
+
+
 def entry_focus_out_handler(event):
     """Enters a "0" in entries if the entry is empty when it is focused out
 
@@ -100,15 +120,15 @@ class UpdateTimeGUI(Toplevel):
         self.protocol('WM_DELETE_WINDOW', self.on_closing)
 
         # Data Parsing #
-        time_data, message_data = data[0], data[1]
+        time_data, message = data[0], data[1]
         self.id_ = time_data.split('|')[0]
         time = [x for x in time_data.split() if x.isnumeric()]
-        message = message_data.split(':')[1].strip()
 
         # Validation #
         validateHr = self.register(validate_hr)
         validateHr12hrf = self.register(validate_hr_12hrf)
         validateMS = self.register(validate_min_sec)
+        validateInterval = self.register(validate_interval)
 
         # Frames #
         self.time_frame = Frame(
@@ -130,7 +150,7 @@ class UpdateTimeGUI(Toplevel):
             self.time_frame, font=('Modern', 20, 'bold'), insertbackground='white',
             fg='white', bg='#414141', width=4, justify='center', validate='key',
             validatecommand=(validateHr, '%P'), relief=RIDGE, bd=4)
-        self.ent_hour.place(x=80, y=85)
+        self.ent_hour.place(x=70, y=85)
         self.ent_hour.insert(INSERT, time[0])
         self.ent_hour.bind('<FocusOut>', entry_focus_out_handler)
 
@@ -138,7 +158,7 @@ class UpdateTimeGUI(Toplevel):
             self.time_frame, font=('Modern', 20, 'bold'), insertbackground='white',
             fg='white', bg='#414141', width=4, justify='center', validate='key',
             validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
-        self.ent_min.place(x=250, y=85)
+        self.ent_min.place(x=200, y=85)
         self.ent_min.insert(INSERT, time[1])
         self.ent_min.bind('<FocusOut>', entry_focus_out_handler)
 
@@ -146,32 +166,49 @@ class UpdateTimeGUI(Toplevel):
             self.time_frame, font=('Modern', 20, 'bold'), insertbackground='white',
             fg='white', bg='#414141', width=4, justify='center', validate='key',
             validatecommand=(validateMS, '%P'), relief=RIDGE, bd=4)
-        self.ent_sec.place(x=420, y=85)
+        self.ent_sec.place(x=330, y=85)
         self.ent_sec.insert(INSERT, time[2])
         self.ent_sec.bind('<FocusOut>', entry_focus_out_handler)
 
         # Entry Labels
         self.hour_lbl = Label(
             self.time_frame, text='Hours', fg='white', font='Modern 20 bold', bg='#181818')
-        self.hour_lbl.place(x=82, y=135)
+        self.hour_lbl.place(x=72, y=135)
 
         self.min_lbl = Label(
             self.time_frame, text='Minutes', fg='white', font='Modern 20 bold', bg='#181818')
-        self.min_lbl.place(x=242, y=135)
+        self.min_lbl.place(x=192, y=135)
 
         self.sec_lbl = Label(
             self.time_frame, text='Seconds', fg='white', font='Modern 20 bold', bg='#181818')
-        self.sec_lbl.place(x=410, y=135)
+        self.sec_lbl.place(x=318, y=135)
 
         # Colons
         self.colon = PhotoImage(file='Images/colon.png')
         self.colon_lbl1 = Label(
             self.time_frame, image=self.colon, bg='#181818')
-        self.colon_lbl1.place(x=180, y=88)
+        self.colon_lbl1.place(x=148, y=88)
 
         self.colon_lbl2 = Label(
             self.time_frame, image=self.colon, bg='#181818')
-        self.colon_lbl2.place(x=350, y=88)
+        self.colon_lbl2.place(x=278, y=88)
+
+        # Interval
+        self.interval_lbl = Label(
+            self.time_frame, text='Interval', fg='white', font='Modern 20 bold', bg='#181818')
+        self.interval_lbl.place(x=430, y=43)
+
+        self.ent_interval = Entry(
+            self.time_frame, font=('Modern', 20, 'bold'), insertbackground='white',
+            fg='white', bg='#414141', width=4, justify='center', relief=RIDGE, bd=4,
+            validate='key', validatecommand=(validateInterval, '%P'))
+        self.ent_interval.place(x=440, y=85)
+        self.ent_interval.insert(INSERT, time[3])
+        self.ent_interval.bind('<FocusOut>', entry_focus_out_handler)
+
+        self.interval_unit_lbl = Label(
+            self.time_frame, text='Minutes', fg='white', font='Modern 20 bold', bg='#181818')
+        self.interval_unit_lbl.place(x=430, y=135)
 
         #
         # Message Frame Components #
@@ -204,11 +241,21 @@ class UpdateTimeGUI(Toplevel):
                 'Warning', 'Scheduled time Cannot be All Zero.', icon='warning')
             return
 
-        time = f'{int(self.ent_hour.get())}:{int(self.ent_min.get())}:{int(self.ent_sec.get())}'
+        # For the rare chance of getting an empty string
+        hr = int(self.ent_hour.get()) if self.ent_hour.get() != '' else 0
+        min_ = int(self.ent_min.get()) if self.ent_min.get() != '' else 0
+        sec = int(self.ent_sec.get()) if self.ent_sec.get() != '' else 0
+        interval = float(self.ent_interval.get()
+                         ) if self.ent_interval.get() != '' else 0
+
+        # Storing the time from the entries
+        time = f'{hr}:{min_}:{sec}'
+
+        # Storing the message
         message = self.message_area.get(0.0, 'end-1c').strip()
 
         self.higher_level.update_database(
-            'alarm_info', self.id_, time=time, message=message)
+            'alarm_info', self.id_, time=time, message=message, interval=interval)
         self.higher_level.update_GUI_running = False
         self.destroy()
 
