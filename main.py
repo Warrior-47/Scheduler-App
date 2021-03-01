@@ -19,7 +19,8 @@ else:
     query = 'CREATE TABLE alarm_info (\
     id INTEGER PRIMARY KEY AUTOINCREMENT,\
     time Text,\
-    message Text);'
+    message Text,\
+    interval INTEGER);'
 
     cur.execute(query)
 
