@@ -122,7 +122,7 @@ class UpdateTimeGUI(Toplevel):
         # Data Parsing #
         time_data, message = data[0], data[1]
         self.id_ = time_data.split('|')[0]
-        time = [x for x in time_data.split() if x.isnumeric()]
+        time = [x for x in time_data.split() if self.is_number(x)]
 
         # Validation #
         validateHr = self.register(validate_hr)
@@ -230,6 +230,21 @@ class UpdateTimeGUI(Toplevel):
         self.update_btn.pack(pady=(50, 0))
 
     # Methods #
+    def is_number(self, string):
+        """Check if given string is numeric or not
+
+        Args:
+            string (str): the input string to check
+
+        Returns:
+            bool: True if string is numeric, False otherwise
+        """
+        try:
+            float(string)
+            return True
+        except:
+            return False
+
     def update(self):
         """
         Updates the database data according to the input

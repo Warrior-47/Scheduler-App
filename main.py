@@ -7,6 +7,7 @@ from os import path
 
 import winsound as ws
 import updatepage
+import traceback
 import sqlite3
 
 if path.exists('database.db'):
@@ -17,17 +18,21 @@ else:
     cur = con.cursor()
 
     query = 'CREATE TABLE alarm_info (\
-    id INTEGER PRIMARY KEY AUTOINCREMENT,\
-    time Text,\
-    message Text,\
-    interval INTEGER);'
+        id INTEGER PRIMARY KEY AUTOINCREMENT,\
+        time Text,\
+        message Text,\
+        interval INTEGER,\
+        state INTEGER\
+    );'
 
     cur.execute(query)
 
     query = 'CREATE TABLE do_not_disturb (\
         id INTEGER PRIMARY KEY AUTOINCREMENT,\
         from_time Text,\
-        to_time Text);'
+        to_time Text,\
+        state INTEGER\
+    );'
 
     cur.execute(query)
     con.commit()
@@ -426,6 +431,10 @@ class App(object):
 
             messagebox.showinfo('Success', 'Successfully Updated.')
         except:
+            with open('error_log.txt', 'a') as f:
+                f.write('['+str(datetime.now())+']\n')
+                traceback.print_exc(file=f)
+                f.write('\n')
             messagebox.showerror(
                 'Failed', 'Could Not Update the Database. Contact Developer.', icon='error')
 
@@ -470,17 +479,24 @@ class App(object):
 
                 query = f'DELETE FROM alarm_info where id = {selected_id}'
                 try:
+                    # Deleting from database
                     cur.execute(query)
                     con.commit()
 
+                    # Deleting from time schedule listbox
                     self.time_listbox.delete(selected)
 
+                    # Removing from the shared control lists
                     global _ALARM_GUI_RUNNING
                     _ALARM_GUI_RUNNING.pop(int(selected_id), None)
                     self._disabled_alarm.pop(int(selected_id), None)
                     self.validating_schedule.pop(int(selected_id), None)
 
                 except:
+                    with open('error_log.txt', 'a') as f:
+                        f.write('['+str(datetime.now())+']\n')
+                        traceback.print_exc(file=f)
+                        f.write('\n')
                     messagebox.showerror(
                         'Failed.', 'Could Not Delete from Database.\nContact Developer.', icon='error')
 
@@ -492,13 +508,20 @@ class App(object):
 
             query = f'DELETE FROM do_not_disturb where id = {selected_id}'
             try:
+                # Deleting from database
                 cur.execute(query)
                 con.commit()
 
+                # Removing from disturb schedules listbox
                 self.disturb_listbox.delete(selected)
 
+                # Removing from the control list
                 self.disturb_disabled.pop(int(selected_id), None)
             except:
+                with open('error_log.txt', 'a') as f:
+                    f.write('['+str(datetime.now())+']\n')
+                    traceback.print_exc(file=f)
+                    f.write('\n')
                 messagebox.showerror(
                     'Failed', 'Could Not Delete from Database.\nContact Developer.', icon='error')
 
@@ -513,15 +536,27 @@ class App(object):
             self.time_listbox.delete(0, END)
 
             # Parsing the data into a fixed format.
-            ids, times, messages, intervals = zip(*res)
+            ids, times, messages, intervals, states = zip(*res)
 
             separated_time = [[t for t in x.split(':')] for x in times]
-            items = [f'{id_}| Time: {t[0]} Hr(s), {t[1]} Min(s), {t[2]} Sec(s). Interval: {i} Mins. Message: {message}' for id_, message, t, i in zip(
-                ids, messages, separated_time, intervals)]
+            items = [(f'{id_}| Time: {t[0]} Hr(s), {t[1]} Min(s), {t[2]} Sec(s). Interval: {i} Mins. Message: {message}', state) for id_, message, t, i, state in zip(
+                ids, messages, separated_time, intervals, states)]
 
             # Inserting data into the time listbox.
-            for i, item in enumerate(items):
+            for i, (item, state) in enumerate(items):
                 self.time_listbox.insert(i, item)
+
+                # Checking if the time schedule was enabled or disabled
+                if state:
+                    # Setting listbox item style for enabled item
+                    self._disabled_alarm[ids[i]] = False
+                    self.change_itembox_item_color(
+                        self.time_listbox, i, 'white', 'white')
+                else:
+                    # Setting listbox item style for disabled item
+                    self._disabled_alarm[ids[i]] = True
+                    self.change_itembox_item_color(
+                        self.time_listbox, i, '#181818', '#414141')
 
         else:
             # If there is nothing in the database, the listbox is cleared.
@@ -538,12 +573,24 @@ class App(object):
             self.disturb_listbox.delete(0, END)
 
             # Parsing data into a fixed format
-            items = [f'{id_}| From: {from_}, To: {to}' for id_,
-                     from_, to in res]
+            items = [(id_, f'{id_}| From: {from_}, To: {to}', state) for id_,
+                     from_, to, state in res]
 
             # Inserting data into the listbox.
-            for i, item in enumerate(items):
+            for i, (id_, item, state) in enumerate(items):
                 self.disturb_listbox.insert(i, item)
+
+                # Checking if the disturb schedule was enabled or disabled
+                if state:
+                    # Setting listbox item style for enabled item
+                    self.disturb_disabled[id_] = False
+                    self.change_itembox_item_color(
+                        self.disturb_listbox, i, 'white', 'white')
+                else:
+                    # Setting listbox item style for disabled item
+                    self.disturb_disabled[id_] = True
+                    self.change_itembox_item_color(
+                        self.disturb_listbox, i, '#181818', '#414141')
 
         else:
             # If there is nothing in the database, the listbox is cleared.
@@ -568,45 +615,101 @@ class App(object):
             selected = self.time_listbox.curselection()[0]
             selected_id = int(self.time_listbox.get(selected).split('|')[0])
 
-            if self.change_schedule_state_btn['text'] == 'Disable':
+            if not self._disabled_alarm[selected_id]:
                 # Disabling the schedule so that it does not run until re-enabled
                 self._disabled_alarm[selected_id] = True
 
                 # Changing the color of the listbox item to signify its state
-                self.time_listbox.itemconfig(selected, fg='#181818')
-                self.time_listbox.itemconfig(
-                    selected, selectforeground='#414141')
+                self.change_itembox_item_color(
+                    self.time_listbox, selected, '#181818', '#414141')
+
+                # Changing the button text
                 self.change_schedule_state_btn['text'] = 'Enable'
+
+                # Changing the state of the schedule to disabled in the database
+                self.change_database_alarm_state('alarm_info', selected_id, 0)
 
             else:
                 # Re-enabling the schedule
                 self._disabled_alarm[selected_id] = False
-                self.time_listbox.itemconfig(selected, fg='white')
-                self.time_listbox.itemconfig(
-                    selected, selectforeground='white')
+
+                # Changing the color of the listbox item to signify its state
+                self.change_itembox_item_color(
+                    self.time_listbox, selected, 'white', 'white')
+
+                # Changing the button text
                 self.change_schedule_state_btn['text'] = 'Disable'
+
+                # Change the state of the schedule to enabled in the database
+                self.change_database_alarm_state('alarm_info', selected_id, 1)
 
         elif self.disturb_listbox.curselection():
             selected = self.disturb_listbox.curselection()[0]
             selected_id = int(self.disturb_listbox.get(selected).split('|')[0])
 
-            if self.change_schedule_state_btn['text'] == 'Disable':
+            if not self.disturb_disabled[selected_id]:
                 # Disabling the schedule so that it does not run until re-enabled
                 self.disturb_disabled[selected_id] = True
 
                 # Changing the color of the listbox item to signify its state
-                self.disturb_listbox.itemconfig(selected, fg='#181818')
-                self.disturb_listbox.itemconfig(
-                    selected, selectforeground='#414141')
+                self.change_itembox_item_color(
+                    self.disturb_listbox, selected, '#181818', '#414141')
+
+                # Changing the button text
                 self.change_schedule_state_btn['text'] = 'Enable'
+
+                # Change the state of the schedule to disabled in the database
+                self.change_database_alarm_state(
+                    'do_not_disturb', selected_id, 0)
 
             else:
                 # Re-enabling the schedule
                 self.disturb_disabled[selected_id] = False
-                self.disturb_listbox.itemconfig(selected, fg='white')
-                self.disturb_listbox.itemconfig(
-                    selected, selectforeground='white')
+
+                # Changing the color of the listbox item to signify its state
+                self.change_itembox_item_color(
+                    self.disturb_listbox, selected, 'white', 'white')
+
+                # Changing the button text
                 self.change_schedule_state_btn['text'] = 'Disable'
+
+                # Change the state of the schedule to enabled in the database
+                self.change_database_alarm_state(
+                    'do_not_disturb', selected_id, 1)
+
+    def change_itembox_item_color(self, widget, item, fg_color, select_color):
+        """Changes the itembox item colors to signify its current state
+
+        Args:
+            widget (Tkinter.Listbox): The listbox those item colors to change
+            item (int): Index of the listbox item to change
+            fg_color (str): Foreground color to set to the item
+            select_color (str): Selection color to set the item
+        """
+        widget.itemconfig(item, fg=fg_color)
+        widget.itemconfig(item, selectforeground=select_color)
+
+    def change_database_alarm_state(self, table_name, id_, state):
+        """Updates the state of the schedule in the database.
+
+        Args:
+            table_name (str): Name of the table whose schedule state to change
+            id_ (int): The ID of the schedule
+            state (int): Current state of the schedule
+        """
+        query = f'UPDATE {table_name} SET state={state} where id={id_};'
+
+        try:
+            cur.execute(query)
+            con.commit()
+
+        except:
+            with open('error_log.txt', 'a') as f:
+                f.write('['+str(datetime.now())+']\n')
+                traceback.print_exc(file=f)
+                f.write('\n')
+            messagebox.showerror(
+                'Failed', 'Could Not Update the Database. Contact Developer.', icon='error')
 
     def change_state_btn_text(self, event):
         """Changes the text of the change_schedule_state_btn button to 
@@ -662,7 +765,7 @@ class App(object):
         message = self.message_area.get(0.0, 'end-1c').strip()
 
         # Query to insert info in the database
-        query = f"INSERT INTO alarm_info(time, message, interval) VALUES('{time}', '{message}', {interval});"
+        query = f"INSERT INTO alarm_info(time, message, interval, state) VALUES('{time}', '{message}', {interval}, 1);"
         try:
             # Executing the query
             cur.execute(query)
@@ -686,6 +789,10 @@ class App(object):
             messagebox.showinfo('Success', 'Schedule Set.')
             self.schedule_alarm()
         except:
+            with open('error_log.txt', 'a') as f:
+                f.write('['+str(datetime.now())+']\n')
+                traceback.print_exc(file=f)
+                f.write('\n')
             messagebox.showerror(
                 'Warning', 'Could not Save to Database.', icon='warning')
 
@@ -713,7 +820,7 @@ class App(object):
             from_time = f'{f_hr}:{f_min}:{f_sec} {self.from_am_pm.get()}'
             to_time = f'{t_hr}:{t_min}:{t_sec} {self.to_am_pm.get()}'
 
-            query = f"INSERT INTO do_not_disturb(from_time, to_time) VALUES('{from_time}', '{to_time}')"
+            query = f"INSERT INTO do_not_disturb(from_time, to_time, state) VALUES('{from_time}', '{to_time}', 1)"
             try:
                 # Inserting into database
                 cur.execute(query)
@@ -741,6 +848,10 @@ class App(object):
 
                 messagebox.showinfo('Success', 'Schedule Set.')
             except:
+                with open('error_log.txt', 'a') as f:
+                    f.write('['+str(datetime.now())+']\n')
+                    traceback.print_exc(file=f)
+                    f.write('\n')
                 messagebox.showerror(
                     'Failed', 'Could Not Set Schedule.', icon='error')
         else:
@@ -847,7 +958,7 @@ class App(object):
             self.saved_date = now - timedelta(days=1)
 
         results = cur.execute(
-            'SELECT * FROM do_not_disturb').fetchall()
+            'SELECT id, from_time, to_time FROM do_not_disturb').fetchall()
         if results:
             self.do_not_disturb = False
             for result in results:
@@ -892,7 +1003,8 @@ class App(object):
         self.check_disturb_mode()
 
         # Checking for schedules in database
-        results = cur.execute('SELECT * from alarm_info').fetchall()
+        results = cur.execute(
+            'SELECT id, time, message, interval from alarm_info').fetchall()
         if results:
             global _ALARM_GUI_RUNNING
             return_flag = False
@@ -903,7 +1015,6 @@ class App(object):
                 if _ALARM_GUI_RUNNING.get(id_, -1) == -1:
                     # Initializes dictionaries if key does not exist
                     _ALARM_GUI_RUNNING[id_] = False
-                    self._disabled_alarm[id_] = False
                     self.validating_schedule[id_] = False
 
                 if self.validating_schedule[id_]:
