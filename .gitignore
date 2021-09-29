@@ -9,9 +9,6 @@ __pycache__/
 # VSCode extentions
 .vscode
 
-# Debug Files
-z.py
-
 # Distribution / packaging
 *.exe
 .Python
