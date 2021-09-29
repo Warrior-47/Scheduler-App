@@ -12,19 +12,19 @@ Users can set a specific amount of time here. Everytime this much time has passe
 
 For example, if I set a time of 30 mins and an interval of 10 mins, the first alarm will ring after 30 mins. After I stop the alarm, the next alarm will ring after 30 + 10 = 40 minutes.
 
-![Schedule Time GUI](/images/alarm_gui.JPG)
+![Schedule Time GUI](/Images/alarm_gui.JPG)
 
 In the message section, you can write a message and that message will be shown everytime the alarm rings.
 
 There's also a **Do Not Disturb** checkbox. No alarm will ring as long as it is checked.
 
-![Schedule Time GUI](/images/timer_setter.JPG)
+![Schedule Time GUI](/Images/timer_setter.JPG)
 
 ### **Do Not Disturb Tab**
 
 You can set a period of time here and no alarm will ring during this period of time. This period of time should be between 12:00:00 AM to 11:59:59 PM.
 
-![Schedule Time GUI](/images/do_not_disturb_setter.JPG)
+![Schedule Time GUI](/Images/do_not_disturb_setter.JPG)
 
 ### **Schedules Tab**
 
@@ -32,7 +32,7 @@ Users can see all their saved Time Period schedules and Do Not Disturb schedules
 
 The **Enable/Disable** button will either enable or disable the selected Time/Do Not Disturb schedule. Darkened schedules are disabled.
 
-![Schedule Time GUI](/images/schedule_tab.JPG)
+![Schedule Time GUI](/Images/schedule_tab.JPG)
 
 ## Download
 
