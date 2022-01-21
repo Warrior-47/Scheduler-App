@@ -10,7 +10,7 @@ GitPython==3.1.12
 ipython==7.31.1
 ipython-genutils==0.2.0
 jedi==0.18.0
-numpy==1.19.5
+numpy==1.21.0
 parso==0.8.1
 pbr==5.5.1
 pefile==2019.4.18
